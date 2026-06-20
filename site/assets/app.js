@@ -516,15 +516,28 @@ function onTabShown(tab) {
   if (tab === "agents") renderAgents();
 }
 
+function activateTab(id) {
+  const button = document.querySelector(`.tabs button[data-tab="${id}"]`);
+  const panel = document.getElementById(id);
+  if (!button || !panel) return false;
+  document.querySelectorAll(".tabs button").forEach((t) => t.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  button.classList.add("active");
+  panel.classList.add("active");
+  onTabShown(id);
+  return true;
+}
+
 document.querySelectorAll(".tabs button").forEach((button) => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".tabs button").forEach((t) => t.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-    button.classList.add("active");
-    document.getElementById(button.dataset.tab).classList.add("active");
-    onTabShown(button.dataset.tab);
-  });
+  button.addEventListener("click", () => activateTab(button.dataset.tab));
 });
+
+// Deep-link a tab via the URL hash, e.g. /data-intelligence-portal/#runs
+function activateTabFromHash() {
+  const id = (location.hash || "").replace(/^#/, "");
+  if (id) activateTab(id);
+}
+window.addEventListener("hashchange", activateTabFromHash);
 
 /* ---------------------------------------------------------------- top actions */
 
@@ -551,6 +564,6 @@ $("#monitor-auto").addEventListener("change", startMonitoring);
 
 tooltipEl = $("#graph-tooltip");
 wireBuildForms();
-refresh().catch((error) => {
+refresh().then(activateTabFromHash).catch((error) => {
   document.body.insertAdjacentHTML("afterbegin", `<div class="answer">Failed to load portal data: ${esc(error.message)}</div>`);
 });
