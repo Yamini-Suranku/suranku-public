@@ -149,7 +149,7 @@ function staticApi(path, options = {}) {
       return state.domains;
     }
     case "/api/contracts": {
-      if (options.method === "POST") { const id = `${body.domain_id}.${body.event_name}.${body.version || "v1"}`; if (!state.domains.some((d) => d.id === body.domain_id)) state.domains.push({ id: body.domain_id, name: body.domain_id, owner: "", description: "" }); state.contracts = state.contracts.filter((c) => c.id !== id); state.contracts.push({ id, domain_id: body.domain_id, topic: body.topic, event_name: body.event_name, version: body.version || "v1", primary_keys: body.primary_keys || [], description: body.description || "", schema: body.schema_text || "" }); saveStatic(); return state.contracts.at(-1); }
+      if (options.method === "POST") { const id = `${body.domain_id}.${body.event_name}.${body.version || "v1"}`; if (!state.domains.some((d) => d.id === body.domain_id)) state.domains.push({ id: body.domain_id, name: body.domain_id, owner: "", description: "" }); state.contracts = state.contracts.filter((c) => c.id !== id); state.contracts.push({ id, domain_id: body.domain_id, source_type: body.source_type || "kafka", topic: body.topic, event_name: body.event_name, version: body.version || "v1", primary_keys: body.primary_keys || [], description: body.description || "", schema: body.schema_text || "" }); saveStatic(); return state.contracts.at(-1); }
       return state.contracts;
     }
     case "/api/events": {
@@ -281,12 +281,25 @@ function wireBuildForms() {
     catch (err) { setBuildStatus(err.message, false); }
   });
 
+  // Source type toggle: relational sources hide Protobuf and relabel fields.
+  const sourceType = $("#source-type");
+  function applySourceType() {
+    const relational = sourceType.value === "relational";
+    $("#topic-label").textContent = relational ? "Table (schema.table)" : "Kafka topic";
+    $("#topic-input").placeholder = relational ? "public.orders" : "commerce.orders.created";
+    $("#pk-label").textContent = relational ? "Primary keys (optional)" : "Primary keys (comma-separated)";
+    $("#proto-fields").hidden = relational;
+  }
+  if (sourceType) { sourceType.addEventListener("change", applySourceType); applySourceType(); }
+
   $("#contract-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const d = formData(e.target);
-    const payload = { domain_id: d.domain_id, topic: d.topic, event_name: d.event_name, version: d.version || "v1", primary_keys: (d.primary_keys || "").split(",").map((s) => s.trim()).filter(Boolean), schema_text: d.schema_text || "", description: d.description || "" };
-    if (!payload.primary_keys.length) { setBuildStatus("At least one primary key is required.", false); return; }
-    try { await api("/api/contracts", { method: "POST", body: JSON.stringify(payload) }); e.target.reset(); await refresh(); setBuildStatus(`Contract "${payload.topic}" added.`); }
+    const source_type = d.source_type || "kafka";
+    const payload = { domain_id: d.domain_id, source_type, topic: d.topic, event_name: d.event_name, version: d.version || "v1", primary_keys: (d.primary_keys || "").split(",").map((s) => s.trim()).filter(Boolean), schema_text: d.schema_text || "", description: d.description || "" };
+    if (source_type === "kafka" && !payload.primary_keys.length) { setBuildStatus("At least one primary key is required for a Kafka source.", false); return; }
+    if (!payload.topic.trim()) { setBuildStatus(source_type === "relational" ? "A table is required." : "A Kafka topic is required.", false); return; }
+    try { await api("/api/contracts", { method: "POST", body: JSON.stringify(payload) }); e.target.reset(); applySourceType(); await refresh(); setBuildStatus(`Source "${payload.topic}" added.`); }
     catch (err) { setBuildStatus(err.message, false); }
   });
 
@@ -536,6 +549,20 @@ function wireScanForm() {
     } catch (err) {
       const status = $("#scan-status");
       if (status) { status.hidden = false; status.textContent = err.message || "Scanning requires the backend."; }
+    }
+  });
+
+  const demo = $("#scan-demo");
+  if (demo) demo.addEventListener("click", async () => {
+    const status = $("#scan-status");
+    try {
+      const summary = await api("/api/scan/demo", { method: "POST" });
+      if (status) { status.hidden = false; status.textContent = `Scanned the sample repo — ${summary.files} files, ${summary.tables} tables, ${summary.columns} column links. Open the Lineage Graph.`; }
+      await renderScan();
+      await refresh();
+      if ($("#graph").classList.contains("active")) renderGraphs();
+    } catch (err) {
+      if (status) { status.hidden = false; status.textContent = err.message || "Scanning requires the FastAPI backend."; }
     }
   });
 }

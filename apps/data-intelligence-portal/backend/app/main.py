@@ -47,10 +47,12 @@ class DomainIn(BaseModel):
 
 class ContractIn(BaseModel):
     domain_id: str
-    topic: str
     event_name: str
+    # "kafka" (event/topic + Protobuf) or "relational" (a database table, e.g. Postgres).
+    source_type: str = "kafka"
+    topic: str = ""  # Kafka topic, or schema.table for a relational source
     version: str = "v1"
-    primary_keys: list[str]
+    primary_keys: list[str] = []  # required for kafka (dedup); optional for relational
     schema_text: str = ""
     description: str = ""
 
@@ -122,7 +124,8 @@ def init_db() -> None:
                 primary_keys text not null,
                 schema_path text not null default '',
                 schema_text text,
-                description text not null default ''
+                description text not null default '',
+                source_type text not null default 'kafka'
             );
             create table if not exists events (
                 id text primary key,
@@ -216,6 +219,8 @@ def init_db() -> None:
         columns = {row[1] for row in conn.execute("pragma table_info(contracts)")}
         if "schema_text" not in columns:
             conn.execute("alter table contracts add column schema_text text")
+        if "source_type" not in columns:
+            conn.execute("alter table contracts add column source_type text not null default 'kafka'")
         # Migration: data_lineage gained asset/scan provenance for scanned edges.
         dl_columns = {row[1] for row in conn.execute("pragma table_info(data_lineage)")}
         if "asset" not in dl_columns:
@@ -615,8 +620,12 @@ def create_domain(payload: DomainIn) -> dict[str, Any]:
 
 @app.post("/api/contracts", status_code=201)
 def create_contract(payload: ContractIn) -> dict[str, Any]:
-    if not payload.primary_keys:
-        raise HTTPException(status_code=400, detail="At least one primary key is required")
+    # Kafka sources need primary keys for deduplication; relational sources don't.
+    if payload.source_type == "kafka" and not payload.primary_keys:
+        raise HTTPException(status_code=400, detail="At least one primary key is required for a Kafka source")
+    if not payload.topic.strip():
+        label = "table" if payload.source_type == "relational" else "Kafka topic"
+        raise HTTPException(status_code=400, detail=f"A {label} is required")
     init_db()
     contract_id = f"{payload.domain_id}.{payload.event_name}.{payload.version}"
     with connect() as conn:
@@ -626,8 +635,8 @@ def create_contract(payload: ContractIn) -> dict[str, Any]:
         )
         conn.execute(
             """insert or replace into contracts
-               (id, domain_id, topic, event_name, version, primary_keys, schema_path, schema_text, description)
-               values (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (id, domain_id, topic, event_name, version, primary_keys, schema_path, schema_text, description, source_type)
+               values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 contract_id,
                 payload.domain_id,
@@ -638,6 +647,7 @@ def create_contract(payload: ContractIn) -> dict[str, Any]:
                 "",
                 payload.schema_text,
                 payload.description,
+                payload.source_type,
             ),
         )
     return {"id": contract_id, **payload.model_dump()}
@@ -701,7 +711,17 @@ def generalized_ingestion() -> dict[str, Any]:
 # ------------------------------------------------------------------- repo scanner
 
 def _persist_scan(conn: sqlite3.Connection, source: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    """Persist scan_run + assets + table/column lineage; return the run summary."""
+    """Persist scan_run + assets + table/column lineage; return the run summary.
+
+    Re-scanning a source is idempotent: prior scanned lineage + assets for this
+    source are cleared first so edges don't accumulate across runs.
+    """
+    prior_scans = [r["id"] for r in rows(conn, "select id from scan_runs where source_id = ?", (source["id"],))]
+    if prior_scans:
+        placeholders = ",".join("?" for _ in prior_scans)
+        conn.execute(f"delete from data_lineage where scan_id in ({placeholders})", prior_scans)
+        conn.execute(f"delete from column_lineage where scan_id in ({placeholders})", prior_scans)
+    conn.execute("delete from scanned_assets where source_id = ?", (source["id"],))
     scan_id = uuid.uuid4().hex
     now = utc_now()
     asset_ids: dict[str, str] = {}
@@ -797,6 +817,47 @@ def run_scan_source(source_id: str) -> dict[str, Any]:
             raise HTTPException(status_code=400, detail=f"Path not found under scan root: {source['path']}")
         result = scan_repo(
             base,
+            sql_globs=json.loads(source["sql_globs"] or "[]") or None,
+            report_globs=json.loads(source["report_globs"] or "[]") or None,
+            naming_conventions=json.loads(source["naming_conventions"] or "[]"),
+            dialect=source["dialect"] or None,
+        )
+        summary = _persist_scan(conn, source, result)
+    return summary
+
+
+@app.post("/api/scan/demo")
+def scan_demo() -> dict[str, Any]:
+    """Register-or-reuse a scan source for the bundled Postgres sample repo and scan it."""
+    from .scanner import scan_repo
+
+    ensure_demo()
+    base = SCAN_ROOT / "sample"
+    if not base.is_dir():
+        raise HTTPException(status_code=400, detail="Bundled sample repo not found under the scan root")
+    with connect() as conn:
+        existing = rows(conn, "select * from scan_sources where name = ?", ("Sample (Postgres)",))
+        if existing:
+            source = existing[0]
+        else:
+            source = {
+                "id": uuid.uuid4().hex,
+                "name": "Sample (Postgres)",
+                "kind": "local_path",
+                "path": "sample",
+                "sql_globs": json.dumps(["**/*.sql"]),
+                "report_globs": json.dumps(["**/*.twb", "**/*.twbx", "**/*.pbix", "**/*.pbit"]),
+                "naming_conventions": json.dumps([]),
+                "dialect": "postgres",
+                "created_at": utc_now(),
+            }
+            conn.execute(
+                "insert into scan_sources (id, name, kind, path, sql_globs, report_globs, naming_conventions, dialect, created_at)"
+                " values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                tuple(source[k] for k in ("id", "name", "kind", "path", "sql_globs", "report_globs", "naming_conventions", "dialect", "created_at")),
+            )
+        result = scan_repo(
+            safe_path(SCAN_ROOT, source["path"]),
             sql_globs=json.loads(source["sql_globs"] or "[]") or None,
             report_globs=json.loads(source["report_globs"] or "[]") or None,
             naming_conventions=json.loads(source["naming_conventions"] or "[]"),
