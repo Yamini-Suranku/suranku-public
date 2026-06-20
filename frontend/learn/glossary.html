@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/styles.css?v=5">
+  <link rel="stylesheet" href="/assets/styles.css?v=6">
 </head>
 <body>
   <header class="topbar public-hero">
@@ -20,14 +20,27 @@
         read the full articles on Suranku Insights.</p>
     </div>
     <div class="actions">
-      <a class="button-link primary" href="https://suranku.com/insights/">Suranku Insights</a>
+      <a class="button-link primary" href="https://suranku.com/insights/index.html">Suranku Insights</a>
       <a class="button-link" href="/">Public home</a>
       <a class="button-link" href="/data-intelligence-portal/">Open the portal</a>
     </div>
   </header>
 
   <main>
-    <section class="panel active">
+    <section class="panel active glossary-controls" aria-label="Glossary filters">
+      <label class="glossary-search-label" for="glossary-search">Search terms</label>
+      <input id="glossary-search" type="search" class="glossary-search" placeholder="Search a term or definition — e.g. dedup, lineage, marker…" autocomplete="off">
+      <div class="glossary-cats" role="group" aria-label="Categories">
+        <button type="button" class="glossary-chip is-active" data-cat="all">All</button>
+        <button type="button" class="glossary-chip" data-cat="source">Source &amp; contracts</button>
+        <button type="button" class="glossary-chip" data-cat="ingestion">Ingestion &amp; process</button>
+        <button type="button" class="glossary-chip" data-cat="storage">Storage &amp; traceability</button>
+        <button type="button" class="glossary-chip" data-cat="operations">Operations &amp; AI</button>
+      </div>
+      <p id="glossary-empty" class="glossary-empty" hidden>No terms match your search. Try a different word or pick <button type="button" class="glossary-empty-reset">All categories</button>.</p>
+    </section>
+
+    <section class="panel active" data-cat="source">
       <div class="section-head">
         <div>
           <p class="eyebrow">Source &amp; contracts</p>
@@ -80,7 +93,7 @@
       </dl>
     </section>
 
-    <section class="panel active">
+    <section class="panel active" data-cat="ingestion">
       <div class="section-head">
         <div>
           <p class="eyebrow">Ingestion &amp; process</p>
@@ -120,7 +133,7 @@
       </dl>
     </section>
 
-    <section class="panel active">
+    <section class="panel active" data-cat="storage">
       <div class="section-head">
         <div>
           <p class="eyebrow">Storage &amp; traceability</p>
@@ -162,7 +175,7 @@
       </dl>
     </section>
 
-    <section class="panel active">
+    <section class="panel active" data-cat="operations">
       <div class="section-head">
         <div>
           <p class="eyebrow">Operations &amp; AI</p>
@@ -211,7 +224,7 @@
         <p>These terms come to life in the full articles and reference designs.</p>
       </div>
       <div class="card-actions">
-        <a class="button-link primary" href="https://suranku.com/insights/">Read Suranku Insights</a>
+        <a class="button-link primary" href="https://suranku.com/insights/index.html">Read Suranku Insights</a>
         <a class="button-link" href="/data-intelligence-portal/">Try the Data Intelligence Portal</a>
       </div>
     </section>
@@ -219,7 +232,54 @@
 
   <footer>
     <span>Suranku Public | Plain-language glossary. More explainers and tech bites coming soon.</span>
-    <a href="https://suranku.com/insights/">Suranku Insights</a>
+    <a href="https://suranku.com/insights/index.html">Suranku Insights</a>
   </footer>
+
+  <script>
+    (function () {
+      var search = document.getElementById("glossary-search");
+      var empty = document.getElementById("glossary-empty");
+      var chips = Array.prototype.slice.call(document.querySelectorAll(".glossary-chip"));
+      var sections = Array.prototype.slice.call(document.querySelectorAll("section[data-cat]"));
+      var activeCat = "all";
+
+      function apply() {
+        var query = (search.value || "").trim().toLowerCase();
+        var totalVisible = 0;
+        sections.forEach(function (section) {
+          var inCat = activeCat === "all" || section.getAttribute("data-cat") === activeCat;
+          var items = section.querySelectorAll(".glossary-item");
+          var shown = 0;
+          items.forEach(function (item) {
+            var match = inCat && (query === "" || item.textContent.toLowerCase().indexOf(query) !== -1);
+            item.hidden = !match;
+            if (match) { shown++; }
+          });
+          section.hidden = shown === 0;
+          totalVisible += shown;
+        });
+        empty.hidden = totalVisible !== 0;
+      }
+
+      search.addEventListener("input", apply);
+      chips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          activeCat = chip.getAttribute("data-cat");
+          chips.forEach(function (c) { c.classList.toggle("is-active", c === chip); });
+          apply();
+        });
+      });
+      var reset = document.querySelector(".glossary-empty-reset");
+      if (reset) {
+        reset.addEventListener("click", function () {
+          search.value = "";
+          activeCat = "all";
+          chips.forEach(function (c) { c.classList.toggle("is-active", c.getAttribute("data-cat") === "all"); });
+          apply();
+          search.focus();
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
