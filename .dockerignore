@@ -1,19 +1,24 @@
-# Keep the image lean and free of local/runtime state
+# Build context is the repo root (apps/<app>/docker-compose.yml uses context: ../..).
+# Keep the image lean and free of local/runtime state.
 .git
 .github
 .gitignore
 .dockerignore
-.pytest_cache
+**/.pytest_cache
 **/__pycache__
 *.pyc
-.venv
-.env
+**/.venv
+**/.env
 
-# Runtime data is created on first run — never bake local state into the image
-data/*.db
-data/object-store/*
-!data/object-store/.gitkeep
+# Runtime data is created on first run — never bake local state into the image.
+**/data/*.db
+**/data/object-store/*
+!**/data/object-store/.gitkeep
 
-# Tests and docs aren't needed at runtime
-tests
+# Tests and docs aren't needed at runtime.
+**/tests
 *.md
+**/*.md
+
+# Other apps' source is not needed for this image (Dockerfile copies its app explicitly).
+site/**/node_modules

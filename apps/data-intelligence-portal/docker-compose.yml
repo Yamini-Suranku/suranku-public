@@ -1,0 +1,19 @@
+services:
+  portal:
+    # Build from the repo root so the image can include both this app's source
+    # (apps/data-intelligence-portal/) and the shared published site (site/).
+    build:
+      context: ../..
+      dockerfile: apps/data-intelligence-portal/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORTAL_HOME: /app
+      PORTAL_SITE: /app/site
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+    volumes:
+      - ./data:/app/data

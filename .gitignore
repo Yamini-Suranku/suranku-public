@@ -3,6 +3,8 @@ __pycache__/
 .venv/
 *.pyc
 .env
-data/*.db
-data/object-store/*
-!data/object-store/.gitkeep
+
+# Runtime data, at the repo root or under any app (apps/<id>/data/)
+**/data/*.db
+**/data/object-store/*
+!**/data/object-store/.gitkeep

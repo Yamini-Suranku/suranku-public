@@ -1,174 +1,56 @@
-# Data Intelligence Portal
+# Suranku Public
 
-A cloneable Suranku template for data intelligence: contracts, marker-driven ingestion, historical catalog layers, lineage, process lineage, and AI-assisted answers.
+Free, open public apps, templates, and reference designs from Suranku — built to
+**democratize the practice of responsible AI**. This is a monorepo: one published
+static site plus the self-hostable source for each app.
 
-Hosted UI: `https://public.suranku.com`
+- **Live site:** https://public.suranku.com
+- **Marketing site:** https://suranku.com
 
-The first demo uses a retail commerce domain with orders, payments, and shipments. It is intentionally lightweight so teams can understand the architecture before replacing the demo adapters with Kafka, Iceberg, S3, MinIO, or enterprise catalog services.
+## Layout
 
-## What It Demonstrates
-
-- Source domains that publish agreed events.
-- Protobuf contracts with event names and primary keys.
-- Marker-driven ingestion that starts after publication.
-- Deduplication based on contract-defined primary keys.
-- Intraday, end-of-day, and analytics catalog layers.
-- Data lineage from topic to catalog table.
-- Process lineage from marker to run to table write.
-- AI-assisted answers over scoped local metadata.
-
-## Quickstart
-
-```bash
-docker compose up --build
+```
+suranku-public/
+├─ site/                          # GitHub Pages root (published to public.suranku.com)
+│  ├─ index.html                  #   the hub — lists all public apps
+│  ├─ assets/  learn/  agents/    #   shared across apps (styles, glossary, agents catalog)
+│  └─ data-intelligence-portal/   #   an app's UI  → /data-intelligence-portal/
+├─ apps/                          # self-hostable source, one dir per app
+│  └─ data-intelligence-portal/   #   backend/ demo/ contracts/ tests/ Dockerfile + README
+└─ .github/workflows/             # pages.yml (publish site/) · ci.yml (per-app tests)
 ```
 
-Open `http://localhost:8080`.
+App URLs are **path-based** (the directory name under `site/`), independent of the
+repo name. Shared resources every app can link to:
 
-Use **Run ingestion** in the UI, or call the API:
+- **Tech glossary:** https://public.suranku.com/learn/glossary.html (`site/learn/`)
+- **Agents catalog:** https://public.suranku.com/agents/ (`site/agents/`)
+- **Shared styles:** `site/assets/styles.css`
 
-```bash
-curl -X POST http://localhost:8080/api/ingestion-runs/demo
-curl http://localhost:8080/api/catalogs
-curl http://localhost:8080/api/lineage/data
-```
+## Apps
 
-## Public UI On GitHub Pages
-
-Suranku Public is the static GitHub Pages hub for free Suranku apps, demos, templates, and experiments. The Data Intelligence Portal is the first public app:
-
-- Public hub: `https://public.suranku.com`
-- Data Intelligence Portal: `https://public.suranku.com/data-intelligence-portal/`
-- GitHub repository: `https://github.com/Yamini-Suranku/data-intelligence-portal`
-
-The UI can be hosted directly from GitHub Pages. The included workflow publishes the `frontend/` folder on every push to `main`, and `frontend/CNAME` configures the custom domain as `public.suranku.com`.
-
-In GitHub, enable:
-
-1. Repository **Settings**.
-2. **Pages**.
-3. Source: **GitHub Actions**.
-4. Custom domain: `public.suranku.com`.
-
-Add this DNS record wherever `suranku.com` is managed:
-
-| Type | Name/Host | Target |
+| App | URL | Source |
 | --- | --- | --- |
-| CNAME | `public` | `yamini-suranku.github.io` |
+| Data Intelligence Portal | `/data-intelligence-portal/` | [`apps/data-intelligence-portal/`](apps/data-intelligence-portal/) |
 
-After GitHub validates the certificate, enable **Enforce HTTPS**.
+## Add a new public app
 
-The Pages version runs as a browser-only demo when the FastAPI backend is not available. It uses the same UI and simulates reset, ingestion, catalogs, lineage, process lineage, and chat locally in the browser.
+1. **UI:** create `site/<app-id>/index.html`, reusing `/assets/` and `/learn/`.
+2. **Backend (optional):** create `apps/<app-id>/` with `backend/`, `Dockerfile`,
+   `requirements.txt`, and `tests/`. Self-hosting backends serve the shared site via the
+   `PORTAL_SITE` env var (the Docker image copies `site/` to `/app/site`).
+3. **Hub card:** add an `.app-card` for it in `site/index.html`.
+4. **CI:** copy the `data-intelligence-portal` job in `.github/workflows/ci.yml` and point
+   `working-directory` at `apps/<app-id>` (optionally add `paths:` filters).
+5. **Optional:** add an entry to `site/agents/index.json` if it ships an agent.
 
-For the full persistent API experience, run the Docker/FastAPI version locally or deploy the backend separately.
+## Deploy
 
-## Local Python Run
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn backend.app.main:app --reload --port 8080
-```
-
-## Optional AI Provider
-
-The assistant works without API keys using deterministic local context. When a
-key is configured, the `/api/chat` endpoint tries providers in this order:
-**native Anthropic → OpenAI-compatible → deterministic local responder**.
-
-### Native Claude / Anthropic (preferred)
-
-Uses the official [`anthropic`](https://github.com/anthropics/anthropic-sdk-python)
-SDK (already in `requirements.txt`). Get a key at
-<https://console.anthropic.com/>, then copy `.env.example` to `.env` and set:
-
-```bash
-export ANTHROPIC_API_KEY=...
-export ANTHROPIC_MODEL=claude-opus-4-8   # optional; this is the default
-```
-
-### OpenAI-compatible (fallback)
-
-Any **OpenAI-compatible** Chat Completions endpoint (OpenAI, Azure OpenAI, Groq,
-Together, OpenRouter, a local Ollama/LM Studio server, …):
-
-```bash
-export OPENAI_API_KEY=...
-export OPENAI_BASE_URL=https://api.openai.com/v1
-export OPENAI_MODEL=gpt-4o-mini
-```
-
-If a provider call fails or no key is set, answers fall back to the built-in
-deterministic responder, so the portal always works. The chat response `mode`
-field reports which path answered (`anthropic`, `openai-compatible`, or
-`deterministic`).
-
-## Tests
-
-```bash
-pip install -r requirements.txt
-python -m pytest
-```
-
-The suite covers the ingestion/lineage logic directly and the HTTP API via
-`fastapi.testclient` (health, reset, ingestion, catalogs/lineage counts, chat
-validation, deterministic fallback, static frontend, and path-traversal
-rejection). CI runs them on every push and pull request
-(`.github/workflows/ci.yml`).
-
-## Adapt The Template
-
-1. Add contracts in `demo/contracts.json`.
-2. Add Protobuf schemas under `contracts/protobuf/<domain>/`.
-3. Add sample events under `demo/events/<domain>/`.
-4. Add marker files under `demo/markers/`.
-5. Declare primary keys for each event.
-6. Replace demo readers/writers with production adapters as needed.
-
-## Build & import in the UI
-
-The **Build** tab lets you define everything by hand — domains, contracts
-(Kafka topic, event name, version, primary keys, Protobuf schema), sample
-events, and lineage edges — or **import** a JSON bundle / upload a `.proto`
-file. Then **Run ingestion** dedupes by primary key and builds the catalog
-layers and lineage. The **Lineage Graph** tab renders interactive D3 force
-graphs (drag, zoom, hover) for both data and process lineage.
-
-- **Backend mode** persists everything in SQLite via the authoring API.
-- **Static (GitHub Pages) mode** persists to the browser's `localStorage`, so
-  your definitions survive reloads on `public.suranku.com`.
-
-## Self-monitoring
-
-The **Monitoring** tab shows dependency liveness/readiness when the backend is
-running: `GET /api/health` (liveness) and `GET /api/readiness` (database,
-object store, AI provider config, and seed data, each with latencies). In
-static mode it reports browser-demo status instead.
-
-## AI Agents (installable)
-
-`frontend/agents/` is a public catalog of reusable agents (served at
-`public.suranku.com/agents/…` and shown in the **AI Agents** tab). Each agent is
-a portable `*.md` with Claude Code-compatible front-matter plus a
-provider-agnostic system prompt, use cases, an example, and install steps —
-usable in Claude or any OpenAI-compatible provider. To add one, drop a `<id>.md`
-in `frontend/agents/` and add an entry to `index.json`. `GET /api/agents` serves
-the same catalog.
-
-## API Highlights
-
-- `GET /api/health` — liveness · `GET /api/readiness` — dependency readiness
-- `POST /api/demo/reset` · `POST /api/ingestion-runs/demo`
-- `POST /api/domains` · `POST /api/contracts` · `POST /api/events`
-- `POST /api/ingestion-runs` — ingest any contract that has stored events
-- `POST /api/lineage/data` · `POST /api/lineage/process`
-- `GET /api/domains` · `/api/contracts` · `/api/events` · `/api/ingestion-runs`
-  · `/api/catalogs` · `/api/lineage/data` · `/api/lineage/process`
-- `GET /api/agents` · `POST /api/chat`
+`.github/workflows/pages.yml` publishes `site/` to GitHub Pages on every push to `main`;
+`site/CNAME` sets the custom domain `public.suranku.com`. Each app's self-hosting
+instructions live in its own README (e.g. [`apps/data-intelligence-portal/README.md`](apps/data-intelligence-portal/README.md)).
 
 ## License
 
-Apache License 2.0. See `LICENSE`.
-
-Suranku names and logos are not licensed under Apache 2.0. See `TRADEMARKS.md`.
+Apache License 2.0 (see `LICENSE`). Suranku names and logos are not licensed under
+Apache 2.0 — see `TRADEMARKS.md`.

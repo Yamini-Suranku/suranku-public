@@ -25,7 +25,10 @@ OBJECT_STORE = Path(os.getenv("PORTAL_OBJECT_STORE", DATA_DIR / "object-store"))
 DEMO_DIR = ROOT / "demo"
 CONTRACTS_DIR = ROOT / "contracts"
 AGENTS_DIR = ROOT / "agents"
-FRONTEND_DIR = ROOT / "frontend"
+# Published static site (hub + all app UIs + shared assets/learn/agents). In the
+# suranku-public monorepo it lives at the repo root (../../site relative to this app),
+# not under the app dir. Override with PORTAL_SITE (e.g. the Docker image copies it to /app/site).
+FRONTEND_DIR = Path(os.getenv("PORTAL_SITE", Path(__file__).resolve().parents[4] / "site"))
 
 
 class ChatRequest(BaseModel):
