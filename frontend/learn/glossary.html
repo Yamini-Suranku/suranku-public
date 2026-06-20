@@ -30,7 +30,7 @@
     <section class="panel active glossary-controls" aria-label="Glossary filters">
       <label class="glossary-search-label" for="glossary-search">Search terms</label>
       <input id="glossary-search" type="search" class="glossary-search" placeholder="Search a term or definition — e.g. dedup, lineage, marker…" autocomplete="off">
-      <div id="glossary-cats" class="glossary-cats" role="group" aria-label="Categories">
+      <div id="glossary-categories" class="glossary-cats" role="group" aria-label="Categories">
         <button type="button" class="glossary-chip is-active" data-cat="all">All</button>
         <button type="button" class="glossary-chip" data-cat="source">Source &amp; contracts</button>
         <button type="button" class="glossary-chip" data-cat="ingestion">Ingestion &amp; process</button>
@@ -218,7 +218,7 @@
       </dl>
     </section>
 
-    <section class="panel active">
+    <section id="go-deeper" class="panel active">
       <div class="section-head">
         <div><p class="eyebrow">Keep reading</p><h2>Go deeper</h2></div>
         <p>These terms come to life in the full articles and reference designs.</p>
@@ -239,7 +239,7 @@
     (function () {
       var search = document.getElementById("glossary-search");
       var empty = document.getElementById("glossary-empty");
-      var cats = document.getElementById("glossary-cats");
+      var cats = document.getElementById("glossary-categories");
       var chips = [];
       var sections = [];
       var activeCat = "all";
