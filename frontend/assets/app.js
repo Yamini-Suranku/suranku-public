@@ -4,12 +4,147 @@ const state = {
   runs: [],
   catalogs: [],
   dataLineage: [],
-  processLineage: []
+  processLineage: [],
+  staticMode: false
 };
 
 const $ = (selector) => document.querySelector(selector);
 
+const demoSeed = {
+  domains: [
+    {
+      id: "commerce",
+      name: "Retail Commerce",
+      owner: "Commerce Data Office",
+      description: "Retail orders, payments, and shipment events used for the demo data platform."
+    }
+  ],
+  contracts: [
+    {
+      id: "commerce.orders.created.v1",
+      domain_id: "commerce",
+      topic: "commerce.orders.created",
+      event_name: "orders_created",
+      version: "v1",
+      primary_keys: ["order_id"],
+      description: "Order creation event published by the retail order service.",
+      schema: `syntax = "proto3";\n\nmessage OrderCreated {\n  string event_id = 1;\n  string order_id = 2;\n  string customer_id = 3;\n  double order_total = 4;\n}`
+    },
+    {
+      id: "commerce.payments.captured.v1",
+      domain_id: "commerce",
+      topic: "commerce.payments.captured",
+      event_name: "payments_captured",
+      version: "v1",
+      primary_keys: ["payment_id"],
+      description: "Payment capture event published by the payment service.",
+      schema: `syntax = "proto3";\n\nmessage PaymentCaptured {\n  string event_id = 1;\n  string payment_id = 2;\n  string order_id = 3;\n  double amount = 4;\n}`
+    },
+    {
+      id: "commerce.shipments.updated.v1",
+      domain_id: "commerce",
+      topic: "commerce.shipments.updated",
+      event_name: "shipments_updated",
+      version: "v1",
+      primary_keys: ["shipment_id"],
+      description: "Shipment status event published by the fulfillment service.",
+      schema: `syntax = "proto3";\n\nmessage ShipmentUpdated {\n  string event_id = 1;\n  string shipment_id = 2;\n  string order_id = 3;\n  string shipment_status = 4;\n}`
+    }
+  ]
+};
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function staticReset() {
+  state.domains = clone(demoSeed.domains);
+  state.contracts = clone(demoSeed.contracts);
+  state.runs = [];
+  state.catalogs = [];
+  state.dataLineage = [];
+  state.processLineage = [];
+}
+
+function staticRunIngestion() {
+  if (!state.domains.length) staticReset();
+  state.runs = state.contracts.map((contract, index) => {
+    const runId = `static_run_${index + 1}`;
+    const recordsRead = contract.id.includes("orders") ? 3 : 2;
+    const recordsDeduped = contract.id.includes("orders") ? 1 : 0;
+    return {
+      id: runId,
+      marker_id: "commerce-batch-001",
+      contract_id: contract.id,
+      status: "completed",
+      records_read: recordsRead,
+      records_written: recordsRead - recordsDeduped,
+      records_deduped: recordsDeduped,
+      output_path: `data/object-store/analytics/commerce/commerce_${contract.event_name}/${runId}.parquet.jsonl`
+    };
+  });
+  state.catalogs = state.contracts.flatMap((contract) =>
+    ["intraday", "endofday", "analytics"].map((layer) => ({
+      id: `${layer}.${contract.domain_id}.${contract.event_name}`,
+      layer,
+      domain_id: contract.domain_id,
+      table_name: contract.event_name,
+      source_contract_id: contract.id,
+      storage_path: `data/object-store/${layer}/${contract.domain_id}/commerce_${contract.event_name}/static.parquet.jsonl`,
+      record_count: contract.id.includes("orders") ? 2 : 2,
+      updated_at: new Date().toISOString()
+    }))
+  );
+  state.dataLineage = state.contracts.flatMap((contract, index) =>
+    ["intraday", "endofday", "analytics"].map((layer) => ({
+      id: `static_lin_${layer}_${contract.event_name}`,
+      source: contract.topic,
+      target: `${layer}.${contract.domain_id}.${contract.event_name}`,
+      relation: "ingested_to",
+      contract_id: contract.id,
+      run_id: `static_run_${index + 1}`
+    }))
+  );
+  state.processLineage = state.runs.flatMap((run) => [
+    {
+      id: `${run.id}_marker`,
+      marker_id: run.marker_id,
+      run_id: run.id,
+      step_name: "marker_discovered",
+      detail: `Marker ${run.marker_id} announced ${run.contract_id}`
+    },
+    {
+      id: `${run.id}_dedup`,
+      marker_id: run.marker_id,
+      run_id: run.id,
+      step_name: "records_deduplicated",
+      detail: `${run.records_deduped} duplicate records removed by contract primary keys`
+    },
+    {
+      id: `${run.id}_catalogs`,
+      marker_id: run.marker_id,
+      run_id: run.id,
+      step_name: "catalogs_written",
+      detail: "intraday, endofday, and analytics layers updated"
+    }
+  ]);
+}
+
+function staticChat(question) {
+  const q = question.toLowerCase();
+  let answer = "This GitHub Pages demo runs fully in the browser. The Docker/FastAPI version adds persistent SQLite metadata and API endpoints.";
+  if (q.includes("lineage")) {
+    answer = "Data lineage connects commerce Kafka topics to intraday, endofday, and analytics catalog tables. Process lineage records marker discovery, deduplication, and catalog writes.";
+  } else if (q.includes("dedup") || q.includes("primary")) {
+    answer = "Deduplication uses primary keys from each contract: order_id for orders, payment_id for payments, and shipment_id for shipments.";
+  } else if (q.includes("catalog") || q.includes("iceberg")) {
+    answer = "The template models intraday, endofday, and analytics catalogs. The Pages demo simulates them; the local app stores run metadata through FastAPI and SQLite.";
+  }
+  return { mode: "github-pages-demo", answer, sources: ["browser demo seed", "agent context"] };
+}
+
 async function api(path, options = {}) {
+  if (state.staticMode) return staticApi(path, options);
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },
     ...options
@@ -18,6 +153,28 @@ async function api(path, options = {}) {
     throw new Error(await response.text());
   }
   return response.json();
+}
+
+function staticApi(path, options = {}) {
+  if (path === "/api/demo/reset") {
+    staticReset();
+    return { status: "reset", domains: state.domains.length, contracts: state.contracts.length };
+  }
+  if (path === "/api/ingestion-runs/demo") {
+    staticRunIngestion();
+    return { marker_id: "commerce-batch-001", runs: state.runs };
+  }
+  if (path === "/api/domains") return state.domains;
+  if (path === "/api/contracts") return state.contracts;
+  if (path === "/api/ingestion-runs") return state.runs;
+  if (path === "/api/catalogs") return state.catalogs;
+  if (path === "/api/lineage/data") return state.dataLineage;
+  if (path === "/api/lineage/process") return state.processLineage;
+  if (path === "/api/chat") {
+    const body = options.body ? JSON.parse(options.body) : { question: "" };
+    return staticChat(body.question || "");
+  }
+  throw new Error(`Unsupported static endpoint: ${path}`);
 }
 
 function card(title, body, meta = "") {
@@ -88,14 +245,19 @@ function renderAll() {
 }
 
 async function refresh() {
-  [state.domains, state.contracts, state.runs, state.catalogs, state.dataLineage, state.processLineage] = await Promise.all([
-    api("/api/domains"),
-    api("/api/contracts"),
-    api("/api/ingestion-runs"),
-    api("/api/catalogs"),
-    api("/api/lineage/data"),
-    api("/api/lineage/process")
-  ]);
+  try {
+    [state.domains, state.contracts, state.runs, state.catalogs, state.dataLineage, state.processLineage] = await Promise.all([
+      api("/api/domains"),
+      api("/api/contracts"),
+      api("/api/ingestion-runs"),
+      api("/api/catalogs"),
+      api("/api/lineage/data"),
+      api("/api/lineage/process")
+    ]);
+  } catch (error) {
+    state.staticMode = true;
+    staticReset();
+  }
   renderAll();
 }
 

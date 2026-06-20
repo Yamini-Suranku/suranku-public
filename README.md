@@ -31,6 +31,20 @@ curl http://localhost:8080/api/catalogs
 curl http://localhost:8080/api/lineage/data
 ```
 
+## Public UI On GitHub Pages
+
+The portal UI can be hosted directly from GitHub Pages. The included workflow publishes the `frontend/` folder on every push to `main`.
+
+In GitHub, enable:
+
+1. Repository **Settings**.
+2. **Pages**.
+3. Source: **GitHub Actions**.
+
+The Pages version runs as a browser-only demo when the FastAPI backend is not available. It uses the same UI and simulates reset, ingestion, catalogs, lineage, process lineage, and chat locally in the browser.
+
+For the full persistent API experience, run the Docker/FastAPI version locally or deploy the backend separately.
+
 ## Local Python Run
 
 ```bash
