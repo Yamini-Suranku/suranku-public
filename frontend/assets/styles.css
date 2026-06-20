@@ -344,3 +344,103 @@ footer a {
     min-width: 0;
   }
 }
+
+/* ---------------------------------------------------- authoring / build forms */
+.build-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.builder-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1.1rem;
+}
+.builder-card h3 { font-size: 1rem; }
+.builder-card label {
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  font-weight: 600;
+  gap: 0.3rem;
+}
+.builder-card input,
+.builder-card select,
+.builder-card textarea {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  padding: 0.55rem 0.65rem;
+  width: 100%;
+}
+.builder-card textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+.builder-card .field-row { display: grid; gap: 0.6rem; grid-template-columns: 1fr 1fr; }
+.builder-card .button-link { margin-top: 0.2rem; }
+.builder-card .hint { color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+.file-label { font-size: 0.78rem; }
+
+/* ----------------------------------------------------------------- D3 graphs */
+.graph-block { margin-bottom: 1.5rem; }
+.graph-head { align-items: center; display: flex; gap: 1rem; justify-content: space-between; margin-bottom: 0.5rem; }
+.graph-wrap { position: relative; }
+.graph {
+  background: #fbfdff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  height: 440px;
+  width: 100%;
+}
+.graph-empty {
+  color: var(--muted);
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.node-label { paint-order: stroke; stroke: #ffffff; stroke-width: 3px; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.legend-chip { align-items: center; color: var(--muted); display: inline-flex; font-size: 0.78rem; font-weight: 600; gap: 0.35rem; }
+.legend-chip i { border-radius: 50%; display: inline-block; height: 0.7rem; width: 0.7rem; }
+.graph-tooltip {
+  background: var(--dark);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  padding: 0.45rem 0.6rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 50;
+}
+
+/* ----------------------------------------------------------------- monitoring */
+.monitor-controls { align-items: center; display: flex; gap: 1rem; }
+.auto-toggle { align-items: center; color: var(--muted); display: inline-flex; font-size: 0.85rem; font-weight: 600; gap: 0.35rem; }
+.monitor-overall {
+  align-items: center; border-radius: 8px; display: flex; font-weight: 700; gap: 0.5rem;
+  margin-bottom: 1rem; padding: 0.75rem 1rem;
+}
+.monitor-overall .status-dot { border-radius: 50%; height: 0.7rem; width: 0.7rem; }
+.monitor-overall.is-ready { background: #ecfdf5; color: #047857; }
+.monitor-overall.is-ready .status-dot { background: #10b981; }
+.monitor-overall.is-degraded { background: #fef2f2; color: #b91c1c; }
+.monitor-overall.is-degraded .status-dot { background: #ef4444; }
+.monitor-overall.is-static { background: #fffbeb; color: #92400e; }
+.monitor-overall.is-static .status-dot { background: #f59e0b; }
+.status-card h3 { align-items: center; display: flex; font-size: 0.95rem; gap: 0.4rem; }
+.status-card .status-dot { border-radius: 50%; height: 0.6rem; width: 0.6rem; }
+.status-card.is-ok .status-dot { background: #10b981; }
+.status-card.is-fail .status-dot { background: #ef4444; }
+
+/* --------------------------------------------------------------------- agents */
+.agent-card { display: flex; flex-direction: column; gap: 0.6rem; }
+.agent-providers { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.badge { background: #eef6ff; border-radius: 9999px; color: var(--brand); font-size: 0.72rem; font-weight: 800; padding: 0.15rem 0.6rem; }
+.agent-uses { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin: 0; padding-left: 1.1rem; }
+.agent-example { color: var(--ink); font-size: 0.85rem; }
+.agent-install { font-size: 0.74rem; white-space: pre-wrap; }

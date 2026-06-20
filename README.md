@@ -109,18 +109,46 @@ rejection). CI runs them on every push and pull request
 5. Declare primary keys for each event.
 6. Replace demo readers/writers with production adapters as needed.
 
+## Build & import in the UI
+
+The **Build** tab lets you define everything by hand — domains, contracts
+(Kafka topic, event name, version, primary keys, Protobuf schema), sample
+events, and lineage edges — or **import** a JSON bundle / upload a `.proto`
+file. Then **Run ingestion** dedupes by primary key and builds the catalog
+layers and lineage. The **Lineage Graph** tab renders interactive D3 force
+graphs (drag, zoom, hover) for both data and process lineage.
+
+- **Backend mode** persists everything in SQLite via the authoring API.
+- **Static (GitHub Pages) mode** persists to the browser's `localStorage`, so
+  your definitions survive reloads on `public.suranku.com`.
+
+## Self-monitoring
+
+The **Monitoring** tab shows dependency liveness/readiness when the backend is
+running: `GET /api/health` (liveness) and `GET /api/readiness` (database,
+object store, AI provider config, and seed data, each with latencies). In
+static mode it reports browser-demo status instead.
+
+## AI Agents (installable)
+
+`frontend/agents/` is a public catalog of reusable agents (served at
+`public.suranku.com/agents/…` and shown in the **AI Agents** tab). Each agent is
+a portable `*.md` with Claude Code-compatible front-matter plus a
+provider-agnostic system prompt, use cases, an example, and install steps —
+usable in Claude or any OpenAI-compatible provider. To add one, drop a `<id>.md`
+in `frontend/agents/` and add an entry to `index.json`. `GET /api/agents` serves
+the same catalog.
+
 ## API Highlights
 
-- `GET /api/health`
-- `POST /api/demo/reset`
-- `POST /api/ingestion-runs/demo`
-- `GET /api/domains`
-- `GET /api/contracts`
-- `GET /api/ingestion-runs`
-- `GET /api/catalogs`
-- `GET /api/lineage/data`
-- `GET /api/lineage/process`
-- `POST /api/chat`
+- `GET /api/health` — liveness · `GET /api/readiness` — dependency readiness
+- `POST /api/demo/reset` · `POST /api/ingestion-runs/demo`
+- `POST /api/domains` · `POST /api/contracts` · `POST /api/events`
+- `POST /api/ingestion-runs` — ingest any contract that has stored events
+- `POST /api/lineage/data` · `POST /api/lineage/process`
+- `GET /api/domains` · `/api/contracts` · `/api/events` · `/api/ingestion-runs`
+  · `/api/catalogs` · `/api/lineage/data` · `/api/lineage/process`
+- `GET /api/agents` · `POST /api/chat`
 
 ## License
 

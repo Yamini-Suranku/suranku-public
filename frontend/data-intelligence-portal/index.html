@@ -4,14 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Data Intelligence Portal | Suranku Public</title>
-  <link rel="stylesheet" href="/assets/styles.css?v=2">
+  <link rel="stylesheet" href="/assets/styles.css?v=3">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js" defer></script>
 </head>
 <body>
   <header class="topbar">
     <div>
       <p class="eyebrow">Suranku Public app</p>
       <h1>Data Intelligence Portal</h1>
-      <p class="lede">Cloneable data intelligence for contracts, ingestion, catalogs, lineage, and AI-assisted answers.</p>
+      <p class="lede">Define contracts, topics, events, primary keys, and lineage — then run ingestion and explore the lineage graph.</p>
     </div>
     <div class="actions">
       <a class="button-link" href="/">Public home</a>
@@ -29,87 +30,176 @@
     </section>
 
     <nav class="tabs" aria-label="Portal views">
-      <button class="active" data-tab="domains" type="button">Domains & Events</button>
+      <button class="active" data-tab="build" type="button">Build</button>
+      <button data-tab="domains" type="button">Domains</button>
       <button data-tab="contracts" type="button">Contracts</button>
       <button data-tab="runs" type="button">Ingestion Runs</button>
       <button data-tab="catalogs" type="button">Catalog Layers</button>
       <button data-tab="lineage" type="button">Lineage</button>
+      <button data-tab="graph" type="button">Lineage Graph</button>
+      <button data-tab="monitoring" type="button">Monitoring</button>
+      <button data-tab="agents" type="button">AI Agents</button>
       <button data-tab="chat" type="button">AI Assistant</button>
-      <button data-tab="adoption" type="button">Adoption Guide</button>
     </nav>
 
-    <section id="domains" class="panel active">
+    <!-- BUILD -->
+    <section id="build" class="panel active">
       <div class="section-head">
         <div>
-          <p class="eyebrow">Source ownership</p>
-          <h2>Domains & Events</h2>
+          <p class="eyebrow">Author</p>
+          <h2>Define &amp; import</h2>
         </div>
-        <p>Retail commerce is the starter domain. Replace it with your own source-system domains.</p>
+        <p id="build-mode" class="meta">Storage: detecting…</p>
       </div>
+      <p id="build-status" class="answer" hidden></p>
+
+      <div class="build-grid">
+        <form id="domain-form" class="builder-card">
+          <h3>Define domain</h3>
+          <label>Name <input name="name" required placeholder="Retail Commerce"></label>
+          <label>Owner <input name="owner" placeholder="Commerce Data Office"></label>
+          <label>Description <input name="description" placeholder="Orders, payments, shipments"></label>
+          <button type="submit" class="button-link primary">Add domain</button>
+        </form>
+
+        <form id="contract-form" class="builder-card">
+          <h3>Define contract</h3>
+          <label>Domain <input name="domain_id" list="domain-options" required placeholder="commerce"></label>
+          <datalist id="domain-options"></datalist>
+          <label>Kafka topic <input name="topic" required placeholder="commerce.orders.created"></label>
+          <div class="field-row">
+            <label>Event name <input name="event_name" required placeholder="orders_created"></label>
+            <label>Version <input name="version" value="v1"></label>
+          </div>
+          <label>Primary keys (comma-separated) <input name="primary_keys" required placeholder="order_id"></label>
+          <label>Protobuf schema
+            <textarea name="schema_text" rows="6" placeholder='syntax = "proto3";'></textarea>
+          </label>
+          <label class="file-label">Import a .proto file <input id="proto-file" type="file" accept=".proto,.txt"></label>
+          <button type="submit" class="button-link primary">Add contract</button>
+        </form>
+
+        <form id="events-form" class="builder-card">
+          <h3>Add events</h3>
+          <label>Contract <select name="contract_id" id="events-contract" required></select></label>
+          <label>Records (JSON array)
+            <textarea name="records" rows="6" placeholder='[{"order_id":"o1"},{"order_id":"o1"},{"order_id":"o2"}]'></textarea>
+          </label>
+          <button type="submit" class="button-link primary">Add events</button>
+        </form>
+
+        <form id="data-lineage-form" class="builder-card">
+          <h3>Define data lineage edge</h3>
+          <label>Source <input name="source" required placeholder="commerce.orders.created"></label>
+          <label>Target <input name="target" required placeholder="analytics.commerce.orders_created"></label>
+          <label>Relation <input name="relation" value="derived_from"></label>
+          <button type="submit" class="button-link primary">Add edge</button>
+        </form>
+
+        <form id="process-lineage-form" class="builder-card">
+          <h3>Define process lineage step</h3>
+          <div class="field-row">
+            <label>Marker <input name="marker_id" required placeholder="batch-001"></label>
+            <label>Run <input name="run_id" required placeholder="run_123"></label>
+          </div>
+          <label>Step <input name="step_name" required placeholder="records_deduplicated"></label>
+          <label>Detail <input name="detail" placeholder="1 duplicate removed"></label>
+          <button type="submit" class="button-link primary">Add step</button>
+        </form>
+
+        <form id="import-form" class="builder-card">
+          <h3>Import bundle</h3>
+          <p class="hint">Paste or upload a JSON bundle with any of: <code>domains, contracts, events, dataLineage, processLineage</code>.</p>
+          <label class="file-label">Upload .json <input id="import-file" type="file" accept=".json"></label>
+          <label>Or paste JSON
+            <textarea id="import-json" name="import_json" rows="6" placeholder='{"contracts": [...], "events": [...]}'></textarea>
+          </label>
+          <button type="submit" class="button-link primary">Import</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="domains" class="panel">
+      <div class="section-head"><div><p class="eyebrow">Source ownership</p><h2>Domains</h2></div>
+        <p>Source-system domains. Define your own in the Build tab.</p></div>
       <div id="domains-list" class="grid"></div>
     </section>
 
     <section id="contracts" class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Producer agreements</p>
-          <h2>Contracts</h2>
-        </div>
-        <p>Contracts define topic, event, primary keys, and schema. These are the foundation for deduplication and lineage.</p>
-      </div>
+      <div class="section-head"><div><p class="eyebrow">Producer agreements</p><h2>Contracts</h2></div>
+        <p>Topic, event, primary keys, and schema — the foundation for deduplication and lineage.</p></div>
       <div id="contracts-list" class="stack"></div>
     </section>
 
     <section id="runs" class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Process evidence</p>
-          <h2>Ingestion Runs</h2>
-        </div>
-        <p>Run the demo ingestion to see marker processing, deduplication, and catalog writes.</p>
-      </div>
+      <div class="section-head"><div><p class="eyebrow">Process evidence</p><h2>Ingestion Runs</h2></div>
+        <p>Run ingestion to process events, deduplicate, and write catalogs.</p></div>
       <div id="runs-list" class="stack"></div>
     </section>
 
     <section id="catalogs" class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Historical layers</p>
-          <h2>Catalog Layers</h2>
-        </div>
-        <p>Intraday, endofday, and analytics layers model the journey from fresh ingest to reporting-ready data.</p>
-      </div>
+      <div class="section-head"><div><p class="eyebrow">Historical layers</p><h2>Catalog Layers</h2></div>
+        <p>Intraday, endofday, and analytics layers.</p></div>
       <div id="catalogs-list" class="grid"></div>
     </section>
 
     <section id="lineage" class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Traceability</p>
-          <h2>Data & Process Lineage</h2>
-        </div>
-        <p>Lineage connects source topics to tables and markers to processing steps.</p>
-      </div>
+      <div class="section-head"><div><p class="eyebrow">Traceability</p><h2>Data &amp; Process Lineage</h2></div>
+        <p>Lineage connects source topics to tables and markers to processing steps.</p></div>
       <div class="split">
-        <div>
-          <h3>Data lineage</h3>
-          <div id="data-lineage-list" class="stack"></div>
-        </div>
-        <div>
-          <h3>Process lineage</h3>
-          <div id="process-lineage-list" class="stack"></div>
-        </div>
+        <div><h3>Data lineage</h3><div id="data-lineage-list" class="stack"></div></div>
+        <div><h3>Process lineage</h3><div id="process-lineage-list" class="stack"></div></div>
       </div>
     </section>
 
-    <section id="chat" class="panel">
+    <!-- LINEAGE GRAPH (D3) -->
+    <section id="graph" class="panel">
       <div class="section-head">
-        <div>
-          <p class="eyebrow">Scoped answers</p>
-          <h2>AI Assistant</h2>
-        </div>
-        <p>Works without an API key using deterministic local context. Set OpenAI-compatible env vars for model-backed answers.</p>
+        <div><p class="eyebrow">Visualization</p><h2>Lineage Graph</h2></div>
+        <p>Interactive node/edge graphs. Drag nodes, scroll to zoom, hover for details.</p>
       </div>
+      <div class="graph-block">
+        <div class="graph-head"><h3>Data lineage</h3>
+          <div class="legend" id="data-legend"></div>
+        </div>
+        <div class="graph-wrap"><svg id="data-graph" class="graph"></svg>
+          <p id="data-graph-empty" class="graph-empty">No data lineage yet — run ingestion or add an edge.</p>
+        </div>
+      </div>
+      <div class="graph-block">
+        <div class="graph-head"><h3>Process lineage</h3></div>
+        <div class="graph-wrap"><svg id="process-graph" class="graph"></svg>
+          <p id="process-graph-empty" class="graph-empty">No process lineage yet — run ingestion or add a step.</p>
+        </div>
+      </div>
+      <div id="graph-tooltip" class="graph-tooltip" hidden></div>
+    </section>
+
+    <!-- MONITORING -->
+    <section id="monitoring" class="panel">
+      <div class="section-head">
+        <div><p class="eyebrow">Self-monitoring</p><h2>Dependency health</h2></div>
+        <div class="monitor-controls">
+          <label class="auto-toggle"><input id="monitor-auto" type="checkbox" checked> Auto-refresh</label>
+          <button id="monitor-refresh" type="button" class="button-link">Refresh</button>
+        </div>
+      </div>
+      <div id="monitor-overall" class="monitor-overall"></div>
+      <div id="monitor-list" class="grid"></div>
+    </section>
+
+    <!-- AI AGENTS -->
+    <section id="agents" class="panel">
+      <div class="section-head">
+        <div><p class="eyebrow">Installable</p><h2>AI Agents</h2></div>
+        <p>Reusable agents you can install in Claude or any AI provider. Hosted in this public repo.</p>
+      </div>
+      <div id="agents-list" class="grid"></div>
+    </section>
+
+    <section id="chat" class="panel">
+      <div class="section-head"><div><p class="eyebrow">Scoped answers</p><h2>AI Assistant</h2></div>
+        <p>Works without an API key using deterministic local context.</p></div>
       <form id="chat-form" class="chat-form">
         <label for="question">Question</label>
         <div>
@@ -119,23 +209,6 @@
       </form>
       <article id="chat-answer" class="answer"></article>
     </section>
-
-    <section id="adoption" class="panel">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">Make it yours</p>
-          <h2>Adoption Guide</h2>
-        </div>
-        <p>Use the template to model your own source systems and data products.</p>
-      </div>
-      <ol class="guide">
-        <li>Add your domain and event contracts in <code>demo/contracts.json</code>.</li>
-        <li>Add Protobuf schemas under <code>contracts/protobuf/&lt;domain&gt;/</code>.</li>
-        <li>Add event samples and marker files under <code>demo/</code>.</li>
-        <li>Declare primary keys so ingestion can deduplicate records.</li>
-        <li>Replace demo readers with Kafka and Iceberg adapters when moving beyond the template.</li>
-      </ol>
-    </section>
   </main>
 
   <footer>
@@ -143,6 +216,6 @@
     <a href="https://github.com/Yamini-Suranku/data-intelligence-portal">GitHub</a>
   </footer>
 
-  <script src="/assets/app.js?v=2"></script>
+  <script src="/assets/app.js?v=3"></script>
 </body>
 </html>
