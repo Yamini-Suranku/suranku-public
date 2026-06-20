@@ -112,8 +112,22 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def safe_path(base: Path, relative: str) -> Path:
+    """Resolve `relative` under `base`, rejecting traversal outside it.
+
+    Contracts/markers carry paths from data files; a cloned template may load
+    untrusted ones, so never read outside the intended directory.
+    """
+    base_resolved = base.resolve()
+    candidate = (base_resolved / relative).resolve()
+    if candidate != base_resolved and base_resolved not in candidate.parents:
+        raise HTTPException(status_code=400, detail=f"Path escapes allowed directory: {relative}")
+    return candidate
+
+
 def reset_demo() -> dict[str, Any]:
-    init_db()
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    OBJECT_STORE.mkdir(parents=True, exist_ok=True)
     if DB_PATH.exists():
         DB_PATH.unlink()
     for file_path in OBJECT_STORE.glob("**/*"):
@@ -187,7 +201,7 @@ def run_demo_ingestion() -> dict[str, Any]:
     with connect() as conn:
         for item in marker["publications"]:
             contract = contract_by_id(conn, item["contract_id"])
-            event_file = DEMO_DIR / item["event_file"]
+            event_file = safe_path(DEMO_DIR, item["event_file"])
             records = load_json(event_file)
             seen: set[tuple[Any, ...]] = set()
             deduped: list[dict[str, Any]] = []
@@ -373,7 +387,7 @@ def contracts() -> list[dict[str, Any]]:
         data = rows(conn, "select * from contracts order by topic")
     for item in data:
         item["primary_keys"] = json.loads(item["primary_keys"])
-        schema_path = ROOT / item["schema_path"]
+        schema_path = safe_path(ROOT, item["schema_path"])
         item["schema"] = schema_path.read_text(encoding="utf-8") if schema_path.exists() else ""
     return data
 

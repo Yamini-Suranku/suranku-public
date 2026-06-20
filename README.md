@@ -73,13 +73,32 @@ uvicorn backend.app.main:app --reload --port 8080
 
 ## Optional AI Provider
 
-The assistant works without API keys using deterministic local context. To use an OpenAI-compatible provider:
+The assistant works without API keys using deterministic local context. To use
+any **OpenAI-compatible** Chat Completions endpoint (OpenAI, Azure OpenAI, Groq,
+Together, OpenRouter, a local Ollama/LM Studio server, …), copy `.env.example`
+to `.env` and set:
 
 ```bash
 export OPENAI_API_KEY=...
 export OPENAI_BASE_URL=https://api.openai.com/v1
 export OPENAI_MODEL=gpt-4o-mini
 ```
+
+If the provider call fails or no key is set, answers fall back to the built-in
+deterministic responder, so the portal always works.
+
+## Tests
+
+```bash
+pip install -r requirements.txt
+python -m pytest
+```
+
+The suite covers the ingestion/lineage logic directly and the HTTP API via
+`fastapi.testclient` (health, reset, ingestion, catalogs/lineage counts, chat
+validation, deterministic fallback, static frontend, and path-traversal
+rejection). CI runs them on every push and pull request
+(`.github/workflows/ci.yml`).
 
 ## Adapt The Template
 

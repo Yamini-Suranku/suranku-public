@@ -10,6 +10,16 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+// Escape untrusted values before injecting into innerHTML. Demo data is safe,
+// but a cloned template plugs in real metadata and live AI output.
+function esc(value) {
+  return String(value === undefined || value === null ? "" : value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 const demoSeed = {
   domains: [
     {
@@ -178,7 +188,7 @@ function staticApi(path, options = {}) {
 }
 
 function card(title, body, meta = "") {
-  return `<article class="card"><h3>${title}</h3><p>${body}</p>${meta ? `<div class="meta">${meta}</div>` : ""}</article>`;
+  return `<article class="card"><h3>${esc(title)}</h3><p>${esc(body)}</p>${meta ? `<div class="meta">${esc(meta)}</div>` : ""}</article>`;
 }
 
 function renderMetrics() {
@@ -197,10 +207,10 @@ function renderDomains() {
 function renderContracts() {
   $("#contracts-list").innerHTML = state.contracts.map((c) =>
     `<article class="card">
-      <h3>${c.topic}</h3>
-      <p>${c.description}</p>
-      <div class="meta">Event: ${c.event_name} | Version: ${c.version} | Primary keys: ${c.primary_keys.join(", ")}</div>
-      <pre>${c.schema.replaceAll("<", "&lt;")}</pre>
+      <h3>${esc(c.topic)}</h3>
+      <p>${esc(c.description)}</p>
+      <div class="meta">Event: ${esc(c.event_name)} | Version: ${esc(c.version)} | Primary keys: ${esc((c.primary_keys || []).join(", "))}</div>
+      <pre>${esc(c.schema)}</pre>
     </article>`
   ).join("");
 }
@@ -284,9 +294,9 @@ $("#chat-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const question = $("#question").value;
   const result = await api("/api/chat", { method: "POST", body: JSON.stringify({ question }) });
-  $("#chat-answer").innerHTML = `<strong>${result.mode}</strong><p>${result.answer}</p><div class="meta">Sources: ${result.sources.join(", ")}</div>`;
+  $("#chat-answer").innerHTML = `<strong>${esc(result.mode)}</strong><p>${esc(result.answer)}</p><div class="meta">Sources: ${esc((result.sources || []).join(", "))}</div>`;
 });
 
 refresh().catch((error) => {
-  document.body.insertAdjacentHTML("afterbegin", `<div class="answer">Failed to load portal data: ${error.message}</div>`);
+  document.body.insertAdjacentHTML("afterbegin", `<div class="answer">Failed to load portal data: ${esc(error.message)}</div>`);
 });
