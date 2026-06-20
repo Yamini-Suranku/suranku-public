@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tech Glossary | Suranku Public</title>
+  <meta name="description" content="Plain-language glossary of the data platform, streaming, governance, and AI terms used across the Suranku Public apps.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/styles.css?v=5">
+</head>
+<body>
+  <header class="topbar public-hero">
+    <div>
+      <p class="eyebrow">Learn</p>
+      <h1>Tech <span class="grad">Glossary</span></h1>
+      <p class="lede">Plain-language definitions of the technical and process terms
+        used across the Suranku Public apps. New to this world? Start here, then
+        read the full articles on Suranku Insights.</p>
+    </div>
+    <div class="actions">
+      <a class="button-link primary" href="https://suranku.com/insights/">Suranku Insights</a>
+      <a class="button-link" href="/">Public home</a>
+      <a class="button-link" href="/data-intelligence-portal/">Open the portal</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel active">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Source &amp; contracts</p>
+          <h2>Where data comes from</h2>
+        </div>
+        <p>How producing systems agree on the shape and meaning of the data they publish.</p>
+      </div>
+      <dl class="glossary">
+        <div class="glossary-item">
+          <dt>Domain</dt>
+          <dd>A source-system area of ownership (e.g. <em>Retail Commerce</em>) that
+            publishes an agreed set of events. Domains keep ownership and
+            responsibility clear as the platform grows.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Data contract</dt>
+          <dd>A formal agreement from a producer describing an event: its topic,
+            name, version, primary keys, and schema. Contracts let consumers rely
+            on data without surprises when producers change.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Kafka topic</dt>
+          <dd>A named stream that events are published to (e.g.
+            <code>commerce.orders.created</code>). Apache Kafka is a common
+            backbone for moving event data between systems in near real time.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Event</dt>
+          <dd>A single record describing something that happened — an order
+            created, a payment captured. Platforms are built by collecting and
+            processing streams of events over time.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Protobuf (Protocol Buffers)</dt>
+          <dd>A compact, strongly-typed format for defining the structure of an
+            event. A <code>.proto</code> schema acts as the contract's blueprint
+            so producers and consumers agree on every field.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Schema</dt>
+          <dd>The defined structure of a record — its fields and their types.
+            Schemas make data predictable and let tools validate it.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Primary key</dt>
+          <dd>The field (or fields) that uniquely identify a record, such as
+            <code>order_id</code>. Primary keys are how the platform recognises
+            duplicates and links related data.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel active">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Ingestion &amp; process</p>
+          <h2>How data is brought in</h2>
+        </div>
+        <p>The steps that turn raw published events into trustworthy, query-ready data.</p>
+      </div>
+      <dl class="glossary">
+        <div class="glossary-item">
+          <dt>Marker</dt>
+          <dd>A small signal file that says "a batch of data is ready to process."
+            Markers prevent ingestion from starting on half-published data.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Marker-driven ingestion</dt>
+          <dd>Ingestion that begins only after a marker appears, rather than on a
+            blind timer. It ensures a complete, consistent batch is processed.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Ingestion run</dt>
+          <dd>One execution of the ingestion process for a contract: it reads
+            events, removes duplicates, writes catalog tables, and records what
+            happened as evidence.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Deduplication (dedup)</dt>
+          <dd>Removing repeated records that share the same primary key, so each
+            real-world thing is counted once. Streams often deliver the same event
+            more than once, so dedup is essential for correct numbers.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Idempotency</dt>
+          <dd>The property that running the same operation again produces the same
+            result — re-running an ingestion doesn't create duplicate output. It
+            makes pipelines safe to retry.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel active">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Storage &amp; traceability</p>
+          <h2>Where data lands and how it's traced</h2>
+        </div>
+        <p>The historical layers data is written to, and the trails that explain it.</p>
+      </div>
+      <dl class="glossary">
+        <div class="glossary-item">
+          <dt>Catalog table</dt>
+          <dd>A processed, query-ready table named
+            <code>&lt;layer&gt;.&lt;domain&gt;.&lt;event&gt;</code>. The catalog is
+            where downstream analysts and apps read data.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Catalog layers</dt>
+          <dd><strong>Intraday</strong> — fresh data as it arrives during the day.
+            <strong>End-of-day</strong> — the closed, settled historical state for a
+            day. <strong>Analytics</strong> — reporting-ready data shaped for
+            dashboards and analysis.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Object store</dt>
+          <dd>Scalable file storage (e.g. S3, MinIO) where the underlying data
+            files live. The catalog points to data kept in the object store.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Data lineage</dt>
+          <dd>The map of where data came from — tracing a catalog table back through
+            its transformations to the original source topic. Answers "where does
+            this number come from?"</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Process lineage</dt>
+          <dd>The trail of <em>how</em> a batch was processed: marker discovered →
+            records deduplicated → catalogs written. Answers "what happened in this
+            run, and why?"</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel active">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Operations &amp; AI</p>
+          <h2>Running and assisting the platform</h2>
+        </div>
+        <p>How the apps stay healthy, and how AI answers are produced responsibly.</p>
+      </div>
+      <dl class="glossary">
+        <div class="glossary-item">
+          <dt>Liveness</dt>
+          <dd>A health check that asks "is the service running at all?" If it fails,
+            the service is restarted.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Readiness</dt>
+          <dd>A deeper check that asks "is the service ready to do real work?" — its
+            database, storage, and dependencies are all available. A service can be
+            live but not yet ready.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Backend vs static mode</dt>
+          <dd><strong>Backend mode</strong> persists data in a real API/database.
+            <strong>Static mode</strong> runs the same UI entirely in your browser
+            (using local storage) for the public demo — no server required.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>AI provider</dt>
+          <dd>The service that produces AI answers. The portal prefers native
+            <strong>Claude/Anthropic</strong>, falls back to any
+            <strong>OpenAI-compatible</strong> endpoint, and finally to a
+            <strong>deterministic</strong> local responder — so it always works,
+            with or without an API key.</dd>
+        </div>
+        <div class="glossary-item">
+          <dt>Deterministic answer</dt>
+          <dd>A built-in response generated from local metadata using fixed rules
+            (no external AI). It's predictable and runs offline, which is why it's
+            the always-available fallback.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel active">
+      <div class="section-head">
+        <div><p class="eyebrow">Keep reading</p><h2>Go deeper</h2></div>
+        <p>These terms come to life in the full articles and reference designs.</p>
+      </div>
+      <div class="card-actions">
+        <a class="button-link primary" href="https://suranku.com/insights/">Read Suranku Insights</a>
+        <a class="button-link" href="/data-intelligence-portal/">Try the Data Intelligence Portal</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Suranku Public | Plain-language glossary. More explainers and tech bites coming soon.</span>
+    <a href="https://suranku.com/insights/">Suranku Insights</a>
+  </footer>
+</body>
+</html>

@@ -497,3 +497,36 @@ footer a {
 .agent-uses { color: var(--muted); font-size: 0.85rem; line-height: 1.5; margin: 0; padding-left: 1.1rem; }
 .agent-example { color: var(--ink); font-size: 0.85rem; }
 .agent-install { font-size: 0.74rem; white-space: pre-wrap; }
+
+/* ----------------------------------------------------------------- learn/glossary */
+.app-card.is-soon { opacity: 0.82; }
+.app-card.is-soon h3 { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; }
+.app-card.is-soon .badge { background: #f1f5f9; color: var(--muted); }
+
+.glossary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0; }
+.glossary-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.1rem;
+}
+.glossary-item dt {
+  color: var(--ink);
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.glossary-item dd { color: var(--muted); line-height: 1.55; margin: 0; }
+.glossary-item dd code,
+.glossary-item dd strong { color: var(--ink); }
+.glossary-item dd code {
+  background: #eef6ff;
+  border-radius: 5px;
+  font-size: 0.85em;
+  padding: 0.05rem 0.35rem;
+}
+@media (max-width: 860px) {
+  .glossary { grid-template-columns: 1fr; }
+}
