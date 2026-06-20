@@ -73,10 +73,25 @@ uvicorn backend.app.main:app --reload --port 8080
 
 ## Optional AI Provider
 
-The assistant works without API keys using deterministic local context. To use
-any **OpenAI-compatible** Chat Completions endpoint (OpenAI, Azure OpenAI, Groq,
-Together, OpenRouter, a local Ollama/LM Studio server, …), copy `.env.example`
-to `.env` and set:
+The assistant works without API keys using deterministic local context. When a
+key is configured, the `/api/chat` endpoint tries providers in this order:
+**native Anthropic → OpenAI-compatible → deterministic local responder**.
+
+### Native Claude / Anthropic (preferred)
+
+Uses the official [`anthropic`](https://github.com/anthropics/anthropic-sdk-python)
+SDK (already in `requirements.txt`). Get a key at
+<https://console.anthropic.com/>, then copy `.env.example` to `.env` and set:
+
+```bash
+export ANTHROPIC_API_KEY=...
+export ANTHROPIC_MODEL=claude-opus-4-8   # optional; this is the default
+```
+
+### OpenAI-compatible (fallback)
+
+Any **OpenAI-compatible** Chat Completions endpoint (OpenAI, Azure OpenAI, Groq,
+Together, OpenRouter, a local Ollama/LM Studio server, …):
 
 ```bash
 export OPENAI_API_KEY=...
@@ -84,8 +99,10 @@ export OPENAI_BASE_URL=https://api.openai.com/v1
 export OPENAI_MODEL=gpt-4o-mini
 ```
 
-If the provider call fails or no key is set, answers fall back to the built-in
-deterministic responder, so the portal always works.
+If a provider call fails or no key is set, answers fall back to the built-in
+deterministic responder, so the portal always works. The chat response `mode`
+field reports which path answered (`anthropic`, `openai-compatible`, or
+`deterministic`).
 
 ## Tests
 

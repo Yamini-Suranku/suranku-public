@@ -3,3 +3,6 @@ uvicorn[standard]==0.30.1
 pydantic==2.7.4
 pytest==8.2.2
 httpx==0.27.0
+# Optional: enables native Claude/Anthropic AI answers. The portal still runs
+# without it (falls back to OpenAI-compatible or deterministic local answers).
+anthropic>=0.40

@@ -48,11 +48,17 @@ def test_chat_requires_a_question():
 
 def test_chat_falls_back_to_deterministic_without_api_key(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     res = client.post("/api/chat", json={"question": "How does lineage work?"})
     assert res.status_code == 200
     body = res.json()
     assert body["mode"] == "deterministic"
     assert "lineage" in body["answer"].lower()
+
+
+def test_anthropic_answer_is_skipped_without_api_key(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert main.anthropic_answer("How does lineage work?") is None
 
 
 def test_static_frontend_is_served_at_root():

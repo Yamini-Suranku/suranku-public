@@ -374,6 +374,40 @@ def deterministic_answer(question: str) -> dict[str, Any]:
     return {"mode": "deterministic", "answer": answer, "sources": [f"local_context_{idx + 1}" for idx, _ in enumerate(matched[:3])]}
 
 
+def anthropic_answer(question: str) -> dict[str, Any] | None:
+    """Native Claude/Anthropic answer via the official SDK (preferred provider)."""
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        return None
+    try:
+        import anthropic
+    except ImportError:
+        return None
+    model = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")
+    try:
+        client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+        message = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            system=(
+                "You are the Data Intelligence Portal assistant. Answer only from the "
+                "provided portal context. If the context does not contain the answer, "
+                "say so plainly. Respond with the final answer only — concise, no preamble."
+            ),
+            messages=[
+                {
+                    "role": "user",
+                    "content": "\n\n".join(context_documents()[:5]) + f"\n\nQuestion: {question}",
+                }
+            ],
+        )
+        answer = "".join(block.text for block in message.content if block.type == "text").strip()
+        if not answer:
+            return None
+        return {"mode": "anthropic", "answer": answer, "sources": ["local portal context"]}
+    except Exception:
+        return None
+
+
 def openai_answer(question: str) -> dict[str, Any] | None:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -492,7 +526,11 @@ def process_lineage() -> list[dict[str, Any]]:
 def chat(payload: ChatRequest) -> dict[str, Any]:
     if not payload.question.strip():
         raise HTTPException(status_code=400, detail="Question is required")
-    return openai_answer(payload.question) or deterministic_answer(payload.question)
+    return (
+        anthropic_answer(payload.question)
+        or openai_answer(payload.question)
+        or deterministic_answer(payload.question)
+    )
 
 
 # --------------------------------------------------------------- authoring API
@@ -624,14 +662,17 @@ def readiness(probe: int = 0) -> dict[str, Any]:
         return f"writable at {OBJECT_STORE.relative_to(ROOT)}"
 
     def check_ai_provider() -> str:
+        if os.getenv("ANTHROPIC_API_KEY"):
+            model = os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8")
+            return f"configured — Anthropic ({model})"
         if not os.getenv("OPENAI_API_KEY"):
             return "not configured — using deterministic local answers"
         base = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         if probe:
             with request.urlopen(request.Request(base, method="GET"), timeout=5):
                 pass
-            return f"configured and reachable ({base})"
-        return f"configured ({base})"
+            return f"configured and reachable — OpenAI-compatible ({base})"
+        return f"configured — OpenAI-compatible ({base})"
 
     def check_seed() -> str:
         with connect() as conn:
