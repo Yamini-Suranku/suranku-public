@@ -532,7 +532,12 @@ footer a {
 }
 
 /* ------------------------------------------------------------- glossary controls */
-.glossary-controls { display: flex; flex-direction: column; gap: 0.9rem; }
+.glossary-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: clamp(1.35rem, 3vw, 1.9rem);
+}
 .glossary-search-label {
   color: var(--muted);
   font-size: 0.78rem;
@@ -546,7 +551,8 @@ footer a {
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
   font: inherit;
-  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  padding: 0.9rem 1.1rem;
   color: var(--ink);
 }
 .glossary-search:focus {
@@ -554,7 +560,7 @@ footer a {
   outline: none;
   box-shadow: 0 0 0 3px rgba(23, 103, 170, 0.15);
 }
-.glossary-cats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.glossary-cats { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1rem; }
 .glossary-chip {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -562,9 +568,10 @@ footer a {
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  padding: 0.4rem 0.95rem;
+  line-height: 1.2;
+  padding: 0.55rem 1.15rem;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 .glossary-chip:hover { border-color: var(--brand-2); color: var(--brand); }
