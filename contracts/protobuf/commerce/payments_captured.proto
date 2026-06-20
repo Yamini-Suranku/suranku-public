@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package commerce.payments.v1;
+
+message PaymentCaptured {
+  string event_id = 1;
+  string payment_id = 2;
+  string order_id = 3;
+  string payment_status = 4;
+  double amount = 5;
+  string currency = 6;
+  string event_time = 7;
+}

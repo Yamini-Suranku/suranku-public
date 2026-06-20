@@ -1,0 +1,8 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+.env
+data/*.db
+data/object-store/*
+!data/object-store/.gitkeep

@@ -1,0 +1,29 @@
+[
+  {
+    "event_id": "evt-order-001",
+    "order_id": "ord-1001",
+    "customer_id": "cust-201",
+    "order_status": "created",
+    "order_total": 129.5,
+    "currency": "USD",
+    "event_time": "2026-06-01T10:00:00Z"
+  },
+  {
+    "event_id": "evt-order-002",
+    "order_id": "ord-1002",
+    "customer_id": "cust-202",
+    "order_status": "created",
+    "order_total": 84.0,
+    "currency": "USD",
+    "event_time": "2026-06-01T10:03:00Z"
+  },
+  {
+    "event_id": "evt-order-002-duplicate",
+    "order_id": "ord-1002",
+    "customer_id": "cust-202",
+    "order_status": "created",
+    "order_total": 84.0,
+    "currency": "USD",
+    "event_time": "2026-06-01T10:03:00Z"
+  }
+]

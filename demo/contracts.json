@@ -1,0 +1,32 @@
+[
+  {
+    "id": "commerce.orders.created.v1",
+    "domain_id": "commerce",
+    "topic": "commerce.orders.created",
+    "event_name": "orders_created",
+    "version": "v1",
+    "primary_keys": ["order_id"],
+    "schema_path": "contracts/protobuf/commerce/orders_created.proto",
+    "description": "Order creation event published by the retail order service."
+  },
+  {
+    "id": "commerce.payments.captured.v1",
+    "domain_id": "commerce",
+    "topic": "commerce.payments.captured",
+    "event_name": "payments_captured",
+    "version": "v1",
+    "primary_keys": ["payment_id"],
+    "schema_path": "contracts/protobuf/commerce/payments_captured.proto",
+    "description": "Payment capture event published by the payment service."
+  },
+  {
+    "id": "commerce.shipments.updated.v1",
+    "domain_id": "commerce",
+    "topic": "commerce.shipments.updated",
+    "event_name": "shipments_updated",
+    "version": "v1",
+    "primary_keys": ["shipment_id"],
+    "schema_path": "contracts/protobuf/commerce/shipments_updated.proto",
+    "description": "Shipment status event published by the fulfillment service."
+  }
+]

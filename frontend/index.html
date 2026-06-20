@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Data Intelligence Portal</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Suranku template</p>
+      <h1>Data Intelligence Portal</h1>
+      <p class="lede">Cloneable data intelligence for contracts, ingestion, catalogs, lineage, and AI-assisted answers.</p>
+    </div>
+    <div class="actions">
+      <button id="reset-demo" type="button">Reset demo</button>
+      <button id="run-demo" type="button" class="primary">Run ingestion</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="metrics" aria-label="Portal metrics">
+      <article><span id="domain-count">0</span><p>Domains</p></article>
+      <article><span id="contract-count">0</span><p>Contracts</p></article>
+      <article><span id="run-count">0</span><p>Runs</p></article>
+      <article><span id="catalog-count">0</span><p>Catalog tables</p></article>
+    </section>
+
+    <nav class="tabs" aria-label="Portal views">
+      <button class="active" data-tab="domains" type="button">Domains & Events</button>
+      <button data-tab="contracts" type="button">Contracts</button>
+      <button data-tab="runs" type="button">Ingestion Runs</button>
+      <button data-tab="catalogs" type="button">Catalog Layers</button>
+      <button data-tab="lineage" type="button">Lineage</button>
+      <button data-tab="chat" type="button">AI Assistant</button>
+      <button data-tab="adoption" type="button">Adoption Guide</button>
+    </nav>
+
+    <section id="domains" class="panel active">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Source ownership</p>
+          <h2>Domains & Events</h2>
+        </div>
+        <p>Retail commerce is the starter domain. Replace it with your own source-system domains.</p>
+      </div>
+      <div id="domains-list" class="grid"></div>
+    </section>
+
+    <section id="contracts" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Producer agreements</p>
+          <h2>Contracts</h2>
+        </div>
+        <p>Contracts define topic, event, primary keys, and schema. These are the foundation for deduplication and lineage.</p>
+      </div>
+      <div id="contracts-list" class="stack"></div>
+    </section>
+
+    <section id="runs" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Process evidence</p>
+          <h2>Ingestion Runs</h2>
+        </div>
+        <p>Run the demo ingestion to see marker processing, deduplication, and catalog writes.</p>
+      </div>
+      <div id="runs-list" class="stack"></div>
+    </section>
+
+    <section id="catalogs" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Historical layers</p>
+          <h2>Catalog Layers</h2>
+        </div>
+        <p>Intraday, endofday, and analytics layers model the journey from fresh ingest to reporting-ready data.</p>
+      </div>
+      <div id="catalogs-list" class="grid"></div>
+    </section>
+
+    <section id="lineage" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Traceability</p>
+          <h2>Data & Process Lineage</h2>
+        </div>
+        <p>Lineage connects source topics to tables and markers to processing steps.</p>
+      </div>
+      <div class="split">
+        <div>
+          <h3>Data lineage</h3>
+          <div id="data-lineage-list" class="stack"></div>
+        </div>
+        <div>
+          <h3>Process lineage</h3>
+          <div id="process-lineage-list" class="stack"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="chat" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Scoped answers</p>
+          <h2>AI Assistant</h2>
+        </div>
+        <p>Works without an API key using deterministic local context. Set OpenAI-compatible env vars for model-backed answers.</p>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <label for="question">Question</label>
+        <div>
+          <input id="question" name="question" value="How does lineage work in this portal?">
+          <button type="submit" class="primary">Ask</button>
+        </div>
+      </form>
+      <article id="chat-answer" class="answer"></article>
+    </section>
+
+    <section id="adoption" class="panel">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Make it yours</p>
+          <h2>Adoption Guide</h2>
+        </div>
+        <p>Use the template to model your own source systems and data products.</p>
+      </div>
+      <ol class="guide">
+        <li>Add your domain and event contracts in <code>demo/contracts.json</code>.</li>
+        <li>Add Protobuf schemas under <code>contracts/protobuf/&lt;domain&gt;/</code>.</li>
+        <li>Add event samples and marker files under <code>demo/</code>.</li>
+        <li>Declare primary keys so ingestion can deduplicate records.</li>
+        <li>Replace demo readers with Kafka and Iceberg adapters when moving beyond the template.</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <span>Apache 2.0 code template. Suranku name and logos remain trademarks of Suranku.</span>
+    <a href="https://github.com/surankutech/data-intelligence-portal">GitHub</a>
+  </footer>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

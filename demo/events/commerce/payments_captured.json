@@ -1,0 +1,20 @@
+[
+  {
+    "event_id": "evt-payment-001",
+    "payment_id": "pay-9001",
+    "order_id": "ord-1001",
+    "payment_status": "captured",
+    "amount": 129.5,
+    "currency": "USD",
+    "event_time": "2026-06-01T10:05:00Z"
+  },
+  {
+    "event_id": "evt-payment-002",
+    "payment_id": "pay-9002",
+    "order_id": "ord-1002",
+    "payment_status": "captured",
+    "amount": 84.0,
+    "currency": "USD",
+    "event_time": "2026-06-01T10:08:00Z"
+  }
+]

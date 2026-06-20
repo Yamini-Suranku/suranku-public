@@ -1,0 +1,18 @@
+[
+  {
+    "event_id": "evt-shipment-001",
+    "shipment_id": "ship-7001",
+    "order_id": "ord-1001",
+    "carrier": "DemoShip",
+    "shipment_status": "label_created",
+    "event_time": "2026-06-01T11:00:00Z"
+  },
+  {
+    "event_id": "evt-shipment-002",
+    "shipment_id": "ship-7002",
+    "order_id": "ord-1002",
+    "carrier": "DemoShip",
+    "shipment_status": "in_transit",
+    "event_time": "2026-06-01T11:15:00Z"
+  }
+]

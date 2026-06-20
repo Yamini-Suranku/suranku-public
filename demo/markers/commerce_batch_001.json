@@ -1,0 +1,19 @@
+{
+  "marker_id": "commerce-batch-001",
+  "published_at": "2026-06-01T12:00:00Z",
+  "domain_id": "commerce",
+  "publications": [
+    {
+      "contract_id": "commerce.orders.created.v1",
+      "event_file": "events/commerce/orders_created.json"
+    },
+    {
+      "contract_id": "commerce.payments.captured.v1",
+      "event_file": "events/commerce/payments_captured.json"
+    },
+    {
+      "contract_id": "commerce.shipments.updated.v1",
+      "event_file": "events/commerce/shipments_updated.json"
+    }
+  ]
+}
