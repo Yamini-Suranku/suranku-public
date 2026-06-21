@@ -61,6 +61,22 @@ Resources:
       RepositoryName: !Ref EcrRepoName
       ImageScanningConfiguration:
         ScanOnPush: true
+      # Allow the Lambda service to pull the image for this app's functions.
+      # Without this, CreateFunction fails with "Lambda does not have permission
+      # to access the ECR image" (403).
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: LambdaECRImageRetrievalPolicy
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - ecr:BatchGetImage
+              - ecr:GetDownloadUrlForLayer
+            Condition:
+              StringLike:
+                aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppStackName}-*"
       LifecyclePolicy:
         # Keep storage to a few cents/month: retain only the last 3 images.
         LifecyclePolicyText: |
