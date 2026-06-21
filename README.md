@@ -33,6 +33,39 @@ repo name. Shared resources every app can link to:
 | --- | --- | --- |
 | Data Intelligence Portal | `/data-intelligence-portal/` | [`apps/data-intelligence-portal/`](apps/data-intelligence-portal/) |
 
+## Two ways to run
+
+The published site (GitHub Pages) is a **static showcase** — the apps run in browser-only
+demo mode (authoring persists to `localStorage`; repo scanning and AI answers show a
+"connect the backend" notice). For the **full experience** — scanning your own repos,
+persistent metadata, and AI answers — run the FastAPI app, which **serves the site *and* the
+API from one origin** (no CORS, no separate frontend hosting).
+
+### Run the full app (Docker) — recommended
+
+```bash
+git clone https://github.com/Yamini-Suranku/suranku-public
+cd suranku-public/apps/data-intelligence-portal
+docker compose up --build      # full app at http://localhost:8080
+```
+
+That's the whole app — Build, **Scan Repo** (local folder, a public GitHub URL, a private
+repo with your token, or an uploaded `.zip`), Lineage Graph, Monitoring, and the AI
+Assistant. Optional env (set in `.env`, see `.env.example`): `ANTHROPIC_API_KEY` for Claude,
+or point `OPENAI_BASE_URL` at a local Ollama/LM Studio server. Scanning a **private** repo
+keeps your token on your machine.
+
+### Host it (Render / Fly.io)
+
+To stand up a live full instance (e.g. `app.suranku.com`) link to from the Pages hub:
+
+- **AWS Lambda** (serverless, scale-to-zero — best for low/sporadic traffic): `sam deploy`
+  with [`template.yaml`](template.yaml) → a Function URL serving site + API.
+- **Render / Fly.io** (always-on container): [`render.yaml`](render.yaml) / [`fly.toml`](fly.toml).
+
+All deploy the same app. See **[`DEPLOY.md`](DEPLOY.md)** for steps, env, persistence, and the
+security guidance (don't accept private tokens on a shared instance).
+
 ## Add a new public app
 
 1. **UI:** create `site/<app-id>/index.html`, reusing `/assets/` and `/learn/`.

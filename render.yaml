@@ -1,0 +1,34 @@
+# Render blueprint — deploy the Data Intelligence Portal (full app: frontend + API).
+# https://render.com/docs/blueprint-spec  ·  see DEPLOY.md for env, persistence, security.
+#
+# The image serves the static site AND /api from one origin, so no separate frontend
+# hosting or CORS is needed. Build context is the repo root (the Dockerfile copies both
+# apps/data-intelligence-portal/ and site/).
+services:
+  - type: web
+    name: suranku-data-intelligence-portal
+    runtime: docker
+    repo: https://github.com/Yamini-Suranku/suranku-public
+    branch: main
+    dockerfilePath: ./apps/data-intelligence-portal/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/health
+    # Bind to the port Render injects (falls back to 8080 locally).
+    dockerCommand: sh -c "uvicorn backend.app.main:app --host 0.0.0.0 --port ${PORT:-8080}"
+    envVars:
+      - key: PORTAL_HOME
+        value: /app
+      - key: PORTAL_SITE
+        value: /app/site
+      # AI answers (optional): set one in the Render dashboard (sync:false = not committed).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+    # NOTE: SQLite lives at /app/data and is EPHEMERAL on the free plan (resets on deploy).
+    # For persistence, move to a paid plan and uncomment a disk:
+    # disk:
+    #   name: portal-data
+    #   mountPath: /app/data
+    #   sizeGB: 1

@@ -1,0 +1,39 @@
+# Fly.io config — deploy the Data Intelligence Portal (full app: frontend + API).
+# https://fly.io/docs/reference/configuration/  ·  see DEPLOY.md for env, persistence, security.
+#
+#   fly launch --no-deploy   # creates the app (edit the name below first)
+#   fly deploy               # builds apps/data-intelligence-portal/Dockerfile from the repo root
+#
+# The image serves the static site AND /api from one origin (no CORS / separate frontend).
+
+app = "suranku-data-intelligence-portal"
+primary_region = "iad"
+
+[build]
+  dockerfile = "apps/data-intelligence-portal/Dockerfile"
+
+[env]
+  PORTAL_HOME = "/app"
+  PORTAL_SITE = "/app/site"
+  # AI answers (optional): set secrets, don't commit them:
+  #   fly secrets set ANTHROPIC_API_KEY=...   (ANTHROPIC_MODEL defaults to claude-opus-4-8)
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.checks]
+    [[http_service.checks.http]]
+      method = "GET"
+      path = "/api/health"
+      interval = "30s"
+      timeout = "5s"
+
+# Persist SQLite across deploys (optional). Create the volume first:
+#   fly volumes create portal_data --size 1
+# [[mounts]]
+#   source = "portal_data"
+#   destination = "/app/data"

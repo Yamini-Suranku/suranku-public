@@ -22,7 +22,9 @@ from pydantic import BaseModel
 
 
 ROOT = Path(os.getenv("PORTAL_HOME", Path(__file__).resolve().parents[2]))
-DATA_DIR = ROOT / "data"
+# Writable runtime dir. Defaults under ROOT, but on read-only roots (AWS Lambda)
+# point it at a writable path, e.g. PORTAL_DATA_DIR=/tmp/data.
+DATA_DIR = Path(os.getenv("PORTAL_DATA_DIR", ROOT / "data"))
 DB_PATH = Path(os.getenv("PORTAL_DB", DATA_DIR / "portal.db"))
 OBJECT_STORE = Path(os.getenv("PORTAL_OBJECT_STORE", DATA_DIR / "object-store"))
 DEMO_DIR = ROOT / "demo"

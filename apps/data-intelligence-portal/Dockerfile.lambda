@@ -1,0 +1,22 @@
+# AWS Lambda container image — the full app (frontend + API) on serverless,
+# scale-to-zero. Build context is the repo root (see template.yaml).
+#   sam build && sam deploy --guided
+FROM public.ecr.aws/lambda/python:3.12
+
+# Deps (+ mangum, the ASGI->Lambda adapter, needed only here).
+COPY apps/data-intelligence-portal/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt mangum
+
+# App source (backend, demo, contracts, agents, lambda_handler) + the shared site.
+COPY apps/data-intelligence-portal/ ${LAMBDA_TASK_ROOT}/
+COPY site/ ${LAMBDA_TASK_ROOT}/site/
+
+# The task root is read-only at runtime; keep all writes in /tmp.
+ENV PORTAL_HOME=${LAMBDA_TASK_ROOT} \
+    PORTAL_SITE=${LAMBDA_TASK_ROOT}/site \
+    PORTAL_DATA_DIR=/tmp/data \
+    PORTAL_DB=/tmp/data/portal.db \
+    PORTAL_OBJECT_STORE=/tmp/data/object-store \
+    PORTAL_SCAN_ROOT=/tmp/repos
+
+CMD ["lambda_handler.handler"]
