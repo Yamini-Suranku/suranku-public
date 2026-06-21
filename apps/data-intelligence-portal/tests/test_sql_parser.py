@@ -47,3 +47,15 @@ def test_select_star_falls_back_to_table_level():
 def test_bad_sql_is_a_warning_not_a_raise():
     res = parse_sql("select from where group by", default_target="x")
     assert res["warnings"]  # reported, not raised
+
+
+def test_dbt_jinja_is_rendered():
+    sql = """
+    {{ config(materialized='table') }}
+    with src as (select * from {{ source('raw', 'orders') }})
+    select o.id, o.amount from {{ ref('stg_orders') }} o
+    """
+    res = parse_sql(sql, default_target="fct_orders")
+    assert "raw.orders" in res["source_tables"]
+    assert "stg_orders" in res["source_tables"]
+    assert not res["warnings"]  # Jinja resolved, parses cleanly

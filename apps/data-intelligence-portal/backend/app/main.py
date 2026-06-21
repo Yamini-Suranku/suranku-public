@@ -12,7 +12,10 @@ from pathlib import Path
 from typing import Any
 from urllib import request
 
-from fastapi import FastAPI, HTTPException
+import shutil
+import tempfile
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -77,11 +80,21 @@ class ProcessLineageIn(BaseModel):
 
 class ScanSourceIn(BaseModel):
     name: str
-    path: str  # resolved under SCAN_ROOT
+    # "local_path" (under SCAN_ROOT) | "github_public" | "github_private"
+    kind: str = "local_path"
+    path: str = ""        # for local_path
+    repo_url: str = ""    # for github_* (https://github.com/<owner>/<repo> or <owner>/<repo>)
+    ref: str = ""         # optional git ref/branch/tag
+    subdir: str = ""      # optional sub-path within the repo to scan
     sql_globs: list[str] = []
     report_globs: list[str] = []
     naming_conventions: list[dict[str, Any]] = []
     dialect: str = ""
+
+
+class RunScanIn(BaseModel):
+    # Per-run token for private GitHub repos. Never stored.
+    token: str = ""
 
 
 def slugify(text: str) -> str:
@@ -175,7 +188,10 @@ def init_db() -> None:
                 id text primary key,
                 name text not null,
                 kind text not null default 'local_path',
-                path text not null,
+                path text not null default '',
+                repo_url text not null default '',
+                ref text not null default '',
+                subdir text not null default '',
                 sql_globs text not null default '[]',
                 report_globs text not null default '[]',
                 naming_conventions text not null default '[]',
@@ -221,6 +237,11 @@ def init_db() -> None:
             conn.execute("alter table contracts add column schema_text text")
         if "source_type" not in columns:
             conn.execute("alter table contracts add column source_type text not null default 'kafka'")
+        # Migration: scan_sources gained github fields.
+        ss_columns = {row[1] for row in conn.execute("pragma table_info(scan_sources)")}
+        for col in ("repo_url", "ref", "subdir"):
+            if col not in ss_columns:
+                conn.execute(f"alter table scan_sources add column {col} text not null default ''")
         # Migration: data_lineage gained asset/scan provenance for scanned edges.
         dl_columns = {row[1] for row in conn.execute("pragma table_info(data_lineage)")}
         if "asset" not in dl_columns:
@@ -767,15 +788,64 @@ def _persist_scan(conn: sqlite3.Connection, source: dict[str, Any], result: dict
     return summary
 
 
+SCAN_COLS = ("id", "name", "kind", "path", "repo_url", "ref", "subdir",
+             "sql_globs", "report_globs", "naming_conventions", "dialect", "created_at")
+
+
+def _scan_and_persist(conn: sqlite3.Connection, source: dict[str, Any], base: str | Path) -> dict[str, Any]:
+    from .scanner import scan_repo  # imported lazily so the app starts without sqlglot
+
+    if not Path(base).is_dir():
+        raise HTTPException(status_code=400, detail="Scan path not found")
+    result = scan_repo(
+        base,
+        sql_globs=json.loads(source.get("sql_globs") or "[]") or None,
+        report_globs=json.loads(source.get("report_globs") or "[]") or None,
+        naming_conventions=json.loads(source.get("naming_conventions") or "[]"),
+        dialect=source.get("dialect") or None,
+    )
+    return _persist_scan(conn, source, result)
+
+
+def _resolve_github_base(source: dict[str, Any], token: str) -> tuple[Path, str]:
+    """Fetch a GitHub repo into a temp dir; return (base_to_scan, tmpdir_to_clean)."""
+    from .scanner import github_fetch as gh
+
+    if source["kind"] == "github_private" and not token:
+        raise HTTPException(status_code=400, detail="A GitHub token is required for a private repo")
+    try:
+        root, tmp = gh.fetch_to_tempdir(source["repo_url"], ref=source.get("ref", ""), token=token or None)
+    except gh.FetchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    subdir = (source.get("subdir") or "").strip().strip("/")
+    base = safe_path(root, subdir) if subdir else root
+    return base, tmp
+
+
 @app.post("/api/scan/sources", status_code=201)
 def create_scan_source(payload: ScanSourceIn) -> dict[str, Any]:
-    safe_path(SCAN_ROOT, payload.path)  # reject traversal outside SCAN_ROOT
+    kind = payload.kind or "local_path"
+    if kind == "local_path":
+        if not payload.path.strip():
+            raise HTTPException(status_code=400, detail="A path is required for a local source")
+        safe_path(SCAN_ROOT, payload.path)  # reject traversal outside SCAN_ROOT
+    elif kind in ("github_public", "github_private"):
+        from .scanner.github_fetch import FetchError, parse_repo
+        try:
+            parse_repo(payload.repo_url)
+        except FetchError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown source kind: {kind}")
     ensure_demo()
     record = {
         "id": uuid.uuid4().hex,
         "name": payload.name,
-        "kind": "local_path",
+        "kind": kind,
         "path": payload.path,
+        "repo_url": payload.repo_url,
+        "ref": payload.ref,
+        "subdir": payload.subdir,
         "sql_globs": json.dumps(payload.sql_globs),
         "report_globs": json.dumps(payload.report_globs),
         "naming_conventions": json.dumps(payload.naming_conventions),
@@ -784,9 +854,8 @@ def create_scan_source(payload: ScanSourceIn) -> dict[str, Any]:
     }
     with connect() as conn:
         conn.execute(
-            "insert into scan_sources (id, name, kind, path, sql_globs, report_globs, naming_conventions, dialect, created_at)"
-            " values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            tuple(record[k] for k in ("id", "name", "kind", "path", "sql_globs", "report_globs", "naming_conventions", "dialect", "created_at")),
+            f"insert into scan_sources ({', '.join(SCAN_COLS)}) values ({', '.join('?' for _ in SCAN_COLS)})",
+            tuple(record[k] for k in SCAN_COLS),
         )
     return record
 
@@ -803,26 +872,58 @@ def list_scan_sources() -> list[dict[str, Any]]:
 
 
 @app.post("/api/scan/sources/{source_id}/run")
-def run_scan_source(source_id: str) -> dict[str, Any]:
-    from .scanner import scan_repo  # imported lazily so the app starts without sqlglot
-
+def run_scan_source(source_id: str, payload: RunScanIn | None = None) -> dict[str, Any]:
     ensure_demo()
+    token = (payload.token if payload else "") or ""
     with connect() as conn:
         found = rows(conn, "select * from scan_sources where id = ?", (source_id,))
         if not found:
             raise HTTPException(status_code=404, detail="Scan source not found")
         source = found[0]
-        base = safe_path(SCAN_ROOT, source["path"])
-        if not base.is_dir():
-            raise HTTPException(status_code=400, detail=f"Path not found under scan root: {source['path']}")
-        result = scan_repo(
-            base,
-            sql_globs=json.loads(source["sql_globs"] or "[]") or None,
-            report_globs=json.loads(source["report_globs"] or "[]") or None,
-            naming_conventions=json.loads(source["naming_conventions"] or "[]"),
-            dialect=source["dialect"] or None,
-        )
-        summary = _persist_scan(conn, source, result)
+        tmp = None
+        try:
+            if source["kind"] in ("github_public", "github_private"):
+                base, tmp = _resolve_github_base(source, token)
+            else:
+                base = safe_path(SCAN_ROOT, source["path"])
+            summary = _scan_and_persist(conn, source, base)
+        finally:
+            if tmp:
+                shutil.rmtree(tmp, ignore_errors=True)
+    return summary
+
+
+@app.post("/api/scan/upload")
+async def scan_upload(request: Request, name: str = "Uploaded repo", dialect: str = "", subdir: str = "") -> dict[str, Any]:
+    """Scan a user-uploaded .zip (POST the raw zip bytes as the body)."""
+    from .scanner import github_fetch as gh
+
+    data = await request.body()
+    if not data:
+        raise HTTPException(status_code=400, detail="Empty upload — POST the .zip bytes as the request body")
+    ensure_demo()
+    tmp = tempfile.mkdtemp(prefix="dip-upload-")
+    try:
+        try:
+            root = gh.extract_zip_bytes(data, tmp)
+        except gh.FetchError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        sub = (subdir or "").strip().strip("/")
+        base = safe_path(root, sub) if sub else root
+        source = {
+            "id": uuid.uuid4().hex, "name": name, "kind": "upload_zip", "path": "",
+            "repo_url": "", "ref": "", "subdir": sub,
+            "sql_globs": "[]", "report_globs": "[]", "naming_conventions": "[]",
+            "dialect": dialect, "created_at": utc_now(),
+        }
+        with connect() as conn:
+            conn.execute(
+                f"insert into scan_sources ({', '.join(SCAN_COLS)}) values ({', '.join('?' for _ in SCAN_COLS)})",
+                tuple(source[k] for k in SCAN_COLS),
+            )
+            summary = _scan_and_persist(conn, source, base)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
     return summary
 
 

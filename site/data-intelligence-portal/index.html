@@ -140,29 +140,43 @@
           <p class="eyebrow">Code &amp; report lineage</p>
           <h2>Scan a repo</h2>
         </div>
-        <p id="scan-mode" class="meta">Configure a folder of SQL and BI reports to parse into lineage.</p>
+        <p id="scan-mode" class="meta">Scan a local folder, a public GitHub repo, a private repo (with a token, used once), or an uploaded .zip — SQL + Tableau + PowerBI parsed into lineage.</p>
       </div>
       <p id="scan-status" class="answer" hidden></p>
 
       <div class="build-grid">
         <form id="scan-form" class="builder-card">
-          <h3>Configure source</h3>
-          <label>Name <input name="name" required placeholder="analytics-repo"></label>
-          <label>Path (under the scan root)
-            <input name="path" required placeholder="analytics">
+          <h3>Add a source to scan</h3>
+          <label>Source
+            <select name="source_kind" id="scan-kind">
+              <option value="local_path">Local folder (under scan root)</option>
+              <option value="github_public">Public GitHub repo (URL)</option>
+              <option value="github_private">Private GitHub repo (URL + token)</option>
+              <option value="upload_zip">Upload a .zip</option>
+            </select>
           </label>
-          <label>SQL globs (comma-separated)
-            <input name="sql_globs" placeholder="models/**/*.sql, sql/**/*.sql">
-          </label>
-          <label>Report globs (comma-separated)
-            <input name="report_globs" placeholder="**/*.twb, **/*.twbx, **/*.pbix, **/*.pbit">
-          </label>
-          <label>Naming convention regex (optional, named group <code>?P&lt;name&gt;</code>)
-            <input name="naming_pattern" placeholder="rpt_(?P&lt;name&gt;.+)\.twb$">
-          </label>
-          <label>SQL dialect (optional)
-            <input name="dialect" placeholder="snowflake, bigquery, postgres, tsql…">
-          </label>
+          <label>Name <input name="name" placeholder="analytics-repo"></label>
+
+          <div id="k-local">
+            <label>Path (under the scan root) <input name="path" placeholder="sample"></label>
+          </div>
+          <div id="k-github" hidden>
+            <label>Repo URL <input name="repo_url" placeholder="https://github.com/dbt-labs/jaffle_shop"></label>
+            <div class="field-row">
+              <label>Ref / branch (optional) <input name="ref" placeholder="main"></label>
+              <label>Subdir (optional) <input name="subdir" placeholder="models"></label>
+            </div>
+          </div>
+          <div id="k-token" hidden>
+            <label>GitHub token <span class="hint">(used once for this scan, never stored)</span>
+              <input name="token" type="password" autocomplete="off" placeholder="ghp_… or github_pat_…">
+            </label>
+          </div>
+          <div id="k-upload" hidden>
+            <label class="file-label">Choose a .zip of your repo <input id="scan-zip" type="file" accept=".zip"></label>
+          </div>
+
+          <label>SQL dialect (optional) <input name="dialect" placeholder="postgres, snowflake, bigquery, tsql…"></label>
           <button type="submit" class="button-link primary">Add source &amp; scan</button>
         </form>
 
@@ -278,6 +292,6 @@
     <a href="https://github.com/Yamini-Suranku/data-intelligence-portal">GitHub</a>
   </footer>
 
-  <script src="/assets/app.js?v=6"></script>
+  <script src="/assets/app.js?v=7"></script>
 </body>
 </html>

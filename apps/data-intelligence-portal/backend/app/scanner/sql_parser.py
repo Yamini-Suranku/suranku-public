@@ -10,11 +10,37 @@ Everything is best-effort: a parse failure is reported as a warning, never raise
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import sqlglot
 from sqlglot import exp
 from sqlglot.lineage import lineage
+
+# --- dbt Jinja preprocessing -------------------------------------------------
+# dbt models are the most common SQL repos; resolve their templating to plain SQL
+# so tables/columns parse. ref('m')->m, source('s','t')->s.t, config/blocks stripped.
+_DBT_COMMENT = re.compile(r"\{#.*?#\}", re.S)
+_DBT_BLOCK = re.compile(r"\{%.*?%\}", re.S)
+_DBT_CONFIG = re.compile(r"\{\{\s*config\s*\(.*?\)\s*\}\}", re.S)
+_DBT_REF = re.compile(r"\{\{\s*ref\s*\((.*?)\)\s*\}\}", re.S)
+_DBT_SOURCE = re.compile(r"\{\{\s*source\s*\((.*?)\)\s*\}\}", re.S)
+_DBT_OTHER = re.compile(r"\{\{.*?\}\}", re.S)
+_QUOTED = re.compile(r"""['"]([^'"]+)['"]""")
+
+
+def _render_dbt(sql: str) -> str:
+    if "{{" not in sql and "{%" not in sql:
+        return sql
+    sql = _DBT_COMMENT.sub(" ", sql)
+    sql = _DBT_BLOCK.sub(" ", sql)
+    sql = _DBT_CONFIG.sub(" ", sql)
+    sql = _DBT_REF.sub(lambda m: (_QUOTED.findall(m.group(1)) or ["ref"])[-1], sql)
+    sql = _DBT_SOURCE.sub(
+        lambda m: ".".join(_QUOTED.findall(m.group(1))[-2:]) or "source", sql
+    )
+    sql = _DBT_OTHER.sub("macro_value", sql)  # any remaining expression -> placeholder
+    return sql
 
 
 def _table_name(table: exp.Table) -> str:
@@ -61,6 +87,7 @@ def parse_sql(sql: str, dialect: str | None = None, default_target: str | None =
     targets: set[str] = set()
     table_edges: set[tuple[str, str, str]] = set()
 
+    sql = _render_dbt(sql)
     try:
         statements = [s for s in sqlglot.parse(sql, read=dialect or None) if s is not None]
     except Exception as exc:  # noqa: BLE001 - best-effort parser

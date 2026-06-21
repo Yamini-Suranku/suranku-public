@@ -494,76 +494,97 @@ async function showColumnLineage(node) {
 
 function csv(value) { return String(value || "").split(",").map((s) => s.trim()).filter(Boolean); }
 
+const SCAN_KIND_LABEL = { local_path: "local", github_public: "public repo", github_private: "private repo", upload_zip: "upload" };
+
+function setScanStatus(msg) { const s = $("#scan-status"); if (s) { s.hidden = false; s.textContent = msg; } }
+
+function applyScanSummary(summary) {
+  setScanStatus(`Scanned ${summary.files} file(s) — ${summary.tables} tables, ${summary.columns} column links.`);
+  const result = $("#scan-result");
+  if (result) result.innerHTML = (summary.warnings || []).length
+    ? `<div class="meta">Warnings:</div><ul class="agent-uses">${summary.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
+    : `<div class="meta">No warnings. Open the Lineage Graph and click a node to drill into columns.</div>`;
+}
+
+async function afterScan(summary) {
+  applyScanSummary(summary);
+  await renderScan();
+  await refresh();
+  if ($("#graph").classList.contains("active")) renderGraphs();
+}
+
 async function renderScan() {
   const modeEl = $("#scan-mode");
-  if (state.staticMode) { if (modeEl) modeEl.textContent = "Scanning requires the FastAPI backend — not available in the static (GitHub Pages) demo."; }
+  if (state.staticMode && modeEl) modeEl.textContent = "Scanning requires the FastAPI backend — run the app locally (Docker) to scan a repo. The static demo can't read repositories.";
   const list = $("#scan-sources");
   if (!list) return;
   let sources = [];
   try { sources = await api("/api/scan/sources"); }
-  catch (_) { list.innerHTML = `<p class="hint">Connect the backend to configure and run scans.</p>`; return; }
-  list.innerHTML = sources.length ? sources.map((s) =>
-    `<article class="card"><h4>${esc(s.name)}</h4>
-      <div class="meta">${esc(s.path)} · ${esc((s.sql_globs || []).join(", ") || "default SQL globs")}</div>
-      <button type="button" class="button-link" data-rescan="${esc(s.id)}">Run scan</button></article>`).join("")
-    : `<p class="hint">No sources yet — configure one on the left.</p>`;
+  catch (_) { list.innerHTML = `<p class="hint">Connect the backend (run locally) to configure and run scans.</p>`; return; }
+  list.innerHTML = sources.length ? sources.map((s) => {
+    const ref = s.kind === "local_path" ? s.path : (s.repo_url || s.kind);
+    const rerun = s.kind === "upload_zip" ? "" : `<button type="button" class="button-link" data-rescan="${esc(s.id)}" data-private="${s.kind === "github_private" ? 1 : ""}">Run scan</button>`;
+    return `<article class="card"><h4>${esc(s.name)}</h4>
+      <div class="meta">${esc(SCAN_KIND_LABEL[s.kind] || s.kind)} · ${esc(ref)}</div>${rerun}</article>`;
+  }).join("") : `<p class="hint">No sources yet — add one on the left.</p>`;
   list.querySelectorAll("[data-rescan]").forEach((b) =>
-    b.addEventListener("click", () => runScan(b.dataset.rescan)));
+    b.addEventListener("click", () => runScan(b.dataset.rescan, b.dataset.private)));
 }
 
-async function runScan(sourceId) {
-  const status = $("#scan-status");
-  const result = $("#scan-result");
+async function runScan(sourceId, isPrivate) {
   try {
-    const summary = await api(`/api/scan/sources/${sourceId}/run`, { method: "POST" });
-    if (status) { status.hidden = false; status.textContent = `Scanned ${summary.files} file(s) — ${summary.tables} tables, ${summary.columns} column links.`; }
-    if (result) result.innerHTML = (summary.warnings || []).length
-      ? `<div class="meta">Warnings:</div><ul class="agent-uses">${summary.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
-      : `<div class="meta">No warnings. Open the Lineage Graph and click a node to drill into columns.</div>`;
-    await refresh();
-    if ($("#graph").classList.contains("active")) renderGraphs();
-  } catch (err) {
-    if (status) { status.hidden = false; status.textContent = err.message || "Scan failed (backend required)."; }
-  }
+    let token = "";
+    if (isPrivate) { token = prompt("GitHub token for this private repo (used once, not stored):") || ""; if (!token) return; }
+    const summary = await api(`/api/scan/sources/${sourceId}/run`, { method: "POST", body: JSON.stringify({ token }) });
+    await afterScan(summary);
+  } catch (err) { setScanStatus(err.message || "Scan failed (backend required)."); }
 }
 
 function wireScanForm() {
   const form = $("#scan-form");
   if (!form) return;
+  const kindSel = $("#scan-kind");
+  function applyKind() {
+    const k = kindSel.value;
+    $("#k-local").hidden = k !== "local_path";
+    $("#k-github").hidden = !(k === "github_public" || k === "github_private");
+    $("#k-token").hidden = k !== "github_private";
+    $("#k-upload").hidden = k !== "upload_zip";
+  }
+  if (kindSel) { kindSel.addEventListener("change", applyKind); applyKind(); }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
-    const payload = {
-      name: f.name.value.trim(),
-      path: f.path.value.trim(),
-      sql_globs: csv(f.sql_globs.value),
-      report_globs: csv(f.report_globs.value),
-      naming_conventions: f.naming_pattern.value.trim() ? [{ pattern: f.naming_pattern.value.trim() }] : [],
-      dialect: f.dialect.value.trim(),
-    };
+    const kind = kindSel.value;
+    const name = f.name.value.trim() || "Scan source";
+    const dialect = f.dialect.value.trim();
     try {
-      const src = await api("/api/scan/sources", { method: "POST", body: JSON.stringify(payload) });
-      f.reset();
-      await renderScan();
-      await runScan(src.id);
-    } catch (err) {
-      const status = $("#scan-status");
-      if (status) { status.hidden = false; status.textContent = err.message || "Scanning requires the backend."; }
-    }
+      if (kind === "upload_zip") {
+        const file = $("#scan-zip").files[0];
+        if (!file) { setScanStatus("Choose a .zip to upload."); return; }
+        const buf = await file.arrayBuffer();
+        const qs = new URLSearchParams({ name, dialect }).toString();
+        const summary = await api(`/api/scan/upload?${qs}`, { method: "POST", body: buf, headers: { "Content-Type": "application/zip" } });
+        await afterScan(summary);
+      } else {
+        const payload = { kind, name, dialect };
+        if (kind === "local_path") payload.path = f.path.value.trim();
+        else { payload.repo_url = f.repo_url.value.trim(); payload.ref = f.ref.value.trim(); payload.subdir = f.subdir.value.trim(); }
+        const src = await api("/api/scan/sources", { method: "POST", body: JSON.stringify(payload) });
+        const runBody = kind === "github_private" ? { token: f.token.value } : {};
+        const summary = await api(`/api/scan/sources/${src.id}/run`, { method: "POST", body: JSON.stringify(runBody) });
+        if (f.token) f.token.value = "";
+        await afterScan(summary);
+      }
+      f.reset(); applyKind();
+    } catch (err) { setScanStatus(err.message || "Scanning requires the FastAPI backend."); }
   });
 
   const demo = $("#scan-demo");
   if (demo) demo.addEventListener("click", async () => {
-    const status = $("#scan-status");
-    try {
-      const summary = await api("/api/scan/demo", { method: "POST" });
-      if (status) { status.hidden = false; status.textContent = `Scanned the sample repo — ${summary.files} files, ${summary.tables} tables, ${summary.columns} column links. Open the Lineage Graph.`; }
-      await renderScan();
-      await refresh();
-      if ($("#graph").classList.contains("active")) renderGraphs();
-    } catch (err) {
-      if (status) { status.hidden = false; status.textContent = err.message || "Scanning requires the FastAPI backend."; }
-    }
+    try { await afterScan(await api("/api/scan/demo", { method: "POST" })); }
+    catch (err) { setScanStatus(err.message || "Scanning requires the FastAPI backend."); }
   });
 }
 

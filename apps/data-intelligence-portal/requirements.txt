@@ -8,3 +8,5 @@ httpx==0.27.0
 anthropic>=0.40
 # Repo scanner: SQL parsing + column-level lineage (pure-Python, no native deps).
 sqlglot>=25.0
+# CA bundle for the GitHub repo fetch over HTTPS (also a transitive dep).
+certifi>=2024.0
