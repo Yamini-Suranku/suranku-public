@@ -62,6 +62,26 @@ The Pages version runs as a browser-only demo when the FastAPI backend is not av
 
 For the full persistent API experience, run the Docker/FastAPI version locally or deploy the backend separately.
 
+## Test the live demo (repo scan → column-level lineage)
+
+The live app at `https://app.suranku.com/data-intelligence-portal/` runs the full backend on AWS
+Lambda. Storage is **ephemeral by design** (`/tmp`, per warm container, reset on cold start) — so
+**do the scan and view it in the same session**.
+
+**A. One-click bundled sample (easiest):**
+1. **Scan** tab → **"Scan sample repo"** → wait for the summary (8 files / 12 tables / 33 column edges).
+2. **Lineage Graph** tab → you'll see `public.* → stg_* → dim_/fct_ → mart_* →` Tableau + PowerBI report nodes.
+3. **Click a mart node** (e.g. `analytics.mart_revenue`) → the **column-level** lineage renders, source → target columns with transformations.
+
+**B. Your own public GitHub repo:**
+1. **Scan** tab → **GitHub (public)** → e.g. `https://github.com/dbt-labs/jaffle_shop` → **Scan**.
+2. **Lineage Graph** → click a model node → column lineage.
+
+**C. Zip upload:** **Scan** tab → **Upload .zip** of a repo containing `.sql` / `.twb` / `.pbit` → **Scan** → graph → click a node.
+
+Private-token scanning is intentionally **not** offered on the shared backend (the token would
+leave your machine). Use the self-hosted Docker run below for private repos — the token stays local.
+
 ## Local Python Run
 
 ```bash

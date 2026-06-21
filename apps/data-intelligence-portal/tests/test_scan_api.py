@@ -48,6 +48,27 @@ def test_scan_local_path_produces_table_and_column_lineage(tmp_path, monkeypatch
     assert any(a["asset_type"] == "sql" and a["name"] == "customer_spend" for a in assets)
 
 
+def test_scan_demo_seeds_bundled_sample_when_scan_root_empty(tmp_path, monkeypatch):
+    # Simulate Lambda: SCAN_ROOT is an empty dir (not ROOT/repos), so /api/scan/demo
+    # must seed the bundled sample (ROOT/repos/sample) into it before scanning.
+    empty_root = tmp_path / "repos"
+    empty_root.mkdir()
+    monkeypatch.setattr(main, "SCAN_ROOT", empty_root)
+    assert not (empty_root / "sample").exists()
+
+    res = client.post("/api/scan/demo")
+    assert res.status_code == 200, res.text
+    summary = res.json()
+    assert summary["files"] >= 1 and summary["columns"] >= 1
+    assert (empty_root / "sample").is_dir()  # seeded from the bundled image copy
+
+    # at least one scanned table exposes column-level lineage
+    data_lineage = client.get("/api/lineage/data").json()
+    assert data_lineage
+    targets = {e["target"] for e in data_lineage}
+    assert any(client.get("/api/lineage/columns", params={"table": t}).json() for t in targets)
+
+
 def test_scan_source_rejects_path_traversal():
     res = client.post("/api/scan/sources", json={"name": "x", "path": "../../etc"})
     assert res.status_code == 400
