@@ -315,6 +315,19 @@ def ensure_demo() -> None:
         reset_demo()
 
 
+def ensure_sample_repo() -> None:
+    """Make the bundled sample repo available under SCAN_ROOT for the one-click
+    demo scan. On Lambda, SCAN_ROOT is /tmp/repos (empty each cold start) while the
+    sample is baked into the image at ROOT/repos/sample, so copy it in. Ephemeral
+    by design (re-seeds on cold start) and a no-op locally/Docker where
+    SCAN_ROOT == ROOT/repos (source == dest)."""
+    bundled = ROOT / "repos" / "sample"
+    dest = SCAN_ROOT / "sample"
+    if bundled.is_dir() and bundled.resolve() != dest.resolve() and not dest.exists():
+        SCAN_ROOT.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(bundled, dest)
+
+
 def contract_by_id(conn: sqlite3.Connection, contract_id: str) -> dict[str, Any]:
     result = rows(conn, "select * from contracts where id = ?", (contract_id,))
     if not result:
@@ -533,6 +546,7 @@ def openai_answer(question: str) -> dict[str, Any] | None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_demo()
+    ensure_sample_repo()
     yield
 
 
@@ -935,6 +949,7 @@ def scan_demo() -> dict[str, Any]:
     from .scanner import scan_repo
 
     ensure_demo()
+    ensure_sample_repo()
     base = SCAN_ROOT / "sample"
     if not base.is_dir():
         raise HTTPException(status_code=400, detail="Bundled sample repo not found under the scan root")
