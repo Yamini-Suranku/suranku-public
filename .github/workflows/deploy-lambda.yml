@@ -38,12 +38,20 @@ jobs:
         run: sam build
 
       - name: SAM deploy
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          sam deploy \
-            --stack-name suranku-data-intelligence-portal \
-            --image-repository "${{ vars.ECR_REPOSITORY_URI }}" \
-            --capabilities CAPABILITY_IAM \
-            --resolve-s3 \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides "AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }}"
+          args=(
+            --stack-name suranku-data-intelligence-portal
+            --image-repository "${{ vars.ECR_REPOSITORY_URI }}"
+            --capabilities CAPABILITY_IAM
+            --resolve-s3
+            --no-confirm-changeset
+            --no-fail-on-empty-changeset
+          )
+          # Only override the key when it's actually set — SAM rejects an empty
+          # "AnthropicApiKey=" value, and the template already defaults it to "".
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            args+=(--parameter-overrides "AnthropicApiKey=$ANTHROPIC_API_KEY")
+          fi
+          sam deploy "${args[@]}"
