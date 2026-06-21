@@ -8,6 +8,7 @@ const state = {
   catalogs: [],
   dataLineage: [],
   processLineage: [],
+  columnTables: new Set(),
   staticMode: false
 };
 
@@ -140,6 +141,7 @@ async function api(path, options = {}) {
 
 function staticApi(path, options = {}) {
   const body = options.body ? JSON.parse(options.body) : {};
+  if (path.startsWith("/api/lineage/column-tables")) return [];
   if (path.startsWith("/api/lineage/columns")) return [];
   if (path.startsWith("/api/scan")) {
     if (path === "/api/scan/sources" && options.method !== "POST") return [];
@@ -254,11 +256,12 @@ function renderAll() {
 
 async function refresh() {
   try {
-    const [domains, contracts, runs, catalogs, dataLineage, processLineage] = await Promise.all([
+    const [domains, contracts, runs, catalogs, dataLineage, processLineage, columnTables] = await Promise.all([
       api("/api/domains"), api("/api/contracts"), api("/api/ingestion-runs"),
-      api("/api/catalogs"), api("/api/lineage/data"), api("/api/lineage/process")
+      api("/api/catalogs"), api("/api/lineage/data"), api("/api/lineage/process"),
+      api("/api/lineage/column-tables")
     ]);
-    Object.assign(state, { domains, contracts, runs, catalogs, dataLineage, processLineage });
+    Object.assign(state, { domains, contracts, runs, catalogs, dataLineage, processLineage, columnTables: new Set(columnTables) });
   } catch (_) {
     state.staticMode = true;
     loadStatic();
@@ -382,12 +385,21 @@ function nodeType(id, kind) {
   return ["intraday", "endofday", "analytics"].includes(layer) ? layer : "topic";
 }
 
-function drawForceGraph(svgSel, nodes, links, emptySel, onNodeClick) {
+function drawForceGraph(svgSel, nodes, links, emptySel, onNodeClick, colSet) {
   const svg = d3.select(svgSel);
   svg.selectAll("*").remove();
   const empty = $(emptySel);
   if (!nodes.length) { if (empty) empty.style.display = "block"; return; }
   if (empty) empty.style.display = "none";
+
+  // 3-state styling on the data graph (where onNodeClick drills into columns):
+  //  • drillable  → node that actually HAS column lineage  → dashed ring + clickable
+  //  • raw source → a node that is never a target           → greyed
+  //  • in-between → a target without column lineage          → normal
+  const derivedIds = new Set(links.map((l) => (typeof l.target === "object" ? l.target.id : l.target)));
+  const hasColumns = colSet instanceof Set;
+  const isDrillable = (d) => Boolean(onNodeClick) && hasColumns && colSet.has(d.id);
+  const isRawSource = (d) => Boolean(onNodeClick) && !derivedIds.has(d.id);
 
   const rect = svg.node().getBoundingClientRect();
   const width = rect.width || 800;
@@ -421,11 +433,22 @@ function drawForceGraph(svgSel, nodes, links, emptySel, onNodeClick) {
       .on("end", (event, d) => { if (!event.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
   );
 
-  node.append("circle").attr("r", 14).attr("fill", (d) => LAYER_COLOR[d.type] || "#64748b").attr("stroke", "#ffffff").attr("stroke-width", 2)
-    .style("cursor", onNodeClick ? "pointer" : "default")
-    .on("mousemove", (event, d) => showTip(`<strong>${esc(d.id)}</strong><br>${esc(d.detail || d.type)}${onNodeClick ? "<br><em>click to drill into columns</em>" : ""}`, event.pageX, event.pageY))
+  // Dashed ring marks a drillable (derived) node — click it for column lineage.
+  node.append("circle").attr("class", "node-ring").attr("r", 19).attr("fill", "none")
+    .attr("stroke", "#6366f1").attr("stroke-width", 2).attr("stroke-dasharray", "3 2")
+    .attr("opacity", (d) => (isDrillable(d) ? 0.9 : 0));
+  node.append("circle").attr("r", 14)
+    .attr("fill", (d) => (isRawSource(d) ? "#cbd5e1" : (LAYER_COLOR[d.type] || "#64748b")))
+    .attr("opacity", (d) => (isRawSource(d) ? 0.55 : 1))
+    .attr("stroke", "#ffffff").attr("stroke-width", 2)
+    .style("cursor", (d) => (isDrillable(d) ? "pointer" : "default"))
+    .on("mousemove", (event, d) => showTip(
+      `<strong>${esc(d.id)}</strong><br>${esc(d.detail || d.type)}` +
+      (isDrillable(d) ? "<br><em>click to drill into columns</em>"
+        : (isRawSource(d) ? "<br><em>source — no column lineage</em>" : "")),
+      event.pageX, event.pageY))
     .on("mouseleave", hideTip)
-    .on("click", (event, d) => { if (onNodeClick) onNodeClick(d); });
+    .on("click", (event, d) => { if (isDrillable(d)) onNodeClick(d); });
   node.append("text").attr("class", "node-label").attr("x", 18).attr("y", 4).attr("font-size", 11).attr("fill", "#0f172a").text((d) => d.label || d.id);
 
   sim.on("tick", () => {
@@ -448,7 +471,7 @@ function renderGraphs() {
   const addNode = (id, kind, label, detail) => { if (!nodeMap.has(id)) nodeMap.set(id, { id, type: nodeType(id, kind), label: label || id, detail }); };
   state.dataLineage.forEach((e) => { addNode(e.source, "topic"); addNode(e.target); });
   const dataLinks = state.dataLineage.map((e) => ({ source: e.source, target: e.target, relation: e.relation }));
-  drawForceGraph("#data-graph", Array.from(nodeMap.values()), dataLinks, "#data-graph-empty", showColumnLineage);
+  drawForceGraph("#data-graph", Array.from(nodeMap.values()), dataLinks, "#data-graph-empty", showColumnLineage, state.columnTables);
 
   const pMap = new Map();
   const pLinks = [];
