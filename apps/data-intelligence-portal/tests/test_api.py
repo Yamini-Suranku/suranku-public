@@ -67,6 +67,15 @@ def test_static_frontend_is_served_at_root():
     assert "Suranku" in res.text
 
 
+def test_app_directory_serves_index_without_redirect_loop():
+    # On Lambda, Mangum drops the trailing slash, so a directory URL must serve
+    # index.html directly rather than 307-redirecting (which loops). Hitting the
+    # path WITHOUT a trailing slash must return 200 (the page), not a redirect.
+    res = client.get("/data-intelligence-portal", follow_redirects=False)
+    assert res.status_code == 200
+    assert "Data Intelligence Portal" in res.text
+
+
 def test_safe_path_rejects_traversal():
     import pytest
     from fastapi import HTTPException

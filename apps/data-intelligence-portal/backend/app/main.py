@@ -1081,4 +1081,21 @@ def list_agents() -> Any:
     return []
 
 
+@app.middleware("http")
+async def serve_static_directory_index(request: Request, call_next):
+    # Lambda/Mangum drops the trailing slash from the ASGI path, which makes
+    # StaticFiles(html=True) emit a self-referential 307 for a directory URL like
+    # /data-intelligence-portal/ — an infinite redirect loop on Lambda (works fine
+    # under native uvicorn, which preserves the slash). Resolve the directory's
+    # index.html ourselves so StaticFiles serves a file and never redirects. Works
+    # with or without the trailing slash; API paths (no index.html) are untouched.
+    if request.method in ("GET", "HEAD"):
+        rel = request.scope.get("path", "").strip("/")
+        if rel and ".." not in rel and not rel.startswith("api/") and rel != "api":
+            directory = FRONTEND_DIR / rel
+            if directory.is_dir() and (directory / "index.html").is_file():
+                request.scope["path"] = "/" + rel + "/index.html"
+    return await call_next(request)
+
+
 app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
