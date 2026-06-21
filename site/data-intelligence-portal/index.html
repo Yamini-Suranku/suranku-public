@@ -69,20 +69,28 @@
         </form>
 
         <form id="contract-form" class="builder-card">
-          <h3>Define contract</h3>
+          <h3>Define source</h3>
+          <label>Source type
+            <select name="source_type" id="source-type">
+              <option value="kafka">Kafka topic + Protobuf (event-driven)</option>
+              <option value="relational">Relational table (Postgres, MySQL, …)</option>
+            </select>
+          </label>
           <label>Domain <input name="domain_id" list="domain-options" required placeholder="commerce"></label>
           <datalist id="domain-options"></datalist>
-          <label>Kafka topic <input name="topic" required placeholder="commerce.orders.created"></label>
+          <label><span id="topic-label">Kafka topic</span> <input name="topic" id="topic-input" required placeholder="commerce.orders.created"></label>
           <div class="field-row">
-            <label>Event name <input name="event_name" required placeholder="orders_created"></label>
+            <label>Name <input name="event_name" required placeholder="orders_created"></label>
             <label>Version <input name="version" value="v1"></label>
           </div>
-          <label>Primary keys (comma-separated) <input name="primary_keys" required placeholder="order_id"></label>
-          <label>Protobuf schema
-            <textarea name="schema_text" rows="6" placeholder='syntax = "proto3";'></textarea>
-          </label>
-          <label class="file-label">Import a .proto file <input id="proto-file" type="file" accept=".proto,.txt"></label>
-          <button type="submit" class="button-link primary">Add contract</button>
+          <label><span id="pk-label">Primary keys (comma-separated)</span> <input name="primary_keys" id="pk-input" placeholder="order_id"></label>
+          <div id="proto-fields">
+            <label>Protobuf schema
+              <textarea name="schema_text" rows="6" placeholder='syntax = "proto3";'></textarea>
+            </label>
+            <label class="file-label">Import a .proto file <input id="proto-file" type="file" accept=".proto,.txt"></label>
+          </div>
+          <button type="submit" class="button-link primary">Add source</button>
         </form>
 
         <form id="events-form" class="builder-card">
@@ -162,6 +170,9 @@
           <h3>Sources &amp; runs</h3>
           <p class="hint">SQL parses fully (tables, columns, transformations). Tableau reads embedded
             custom SQL + relations. PowerBI is best-effort (Power Query M / native SQL).</p>
+          <button type="button" id="scan-demo" class="button-link primary">Scan sample repo</button>
+          <p class="hint">A bundled Postgres analytics project (SQL + Tableau + PowerBI) — scans into a
+            full source→staging→marts→reports lineage you can explore in the graph.</p>
           <div id="scan-sources" class="stack"></div>
           <div id="scan-result"></div>
         </div>
@@ -267,6 +278,6 @@
     <a href="https://github.com/Yamini-Suranku/data-intelligence-portal">GitHub</a>
   </footer>
 
-  <script src="/assets/app.js?v=5"></script>
+  <script src="/assets/app.js?v=6"></script>
 </body>
 </html>

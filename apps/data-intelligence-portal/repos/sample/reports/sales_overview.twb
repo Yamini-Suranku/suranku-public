@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<workbook>
+  <datasources>
+    <datasource name='Revenue'>
+      <connection class='postgres' dbname='analytics'>
+        <relation name='Revenue by Region' type='text'>select region_name, revenue, order_count from analytics.mart_revenue</relation>
+        <relation name='regions' type='table' table='[public].[regions]'/>
+      </connection>
+      <column caption='Avg Order Value' name='[Calculation_1]'>
+        <calculation class='tableau' formula='[revenue] / [order_count]'/>
+      </column>
+    </datasource>
+  </datasources>
+</workbook>
