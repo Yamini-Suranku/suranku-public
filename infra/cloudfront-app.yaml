@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudFront distribution that puts a custom domain (app.suranku.com) in front of
+  the Data Intelligence Portal's Lambda Function URL. CloudFront terminates TLS with
+  an ACM cert for the domain and forwards the ORIGIN's host header to Lambda (via the
+  AllViewerExceptHostHeader managed origin-request policy), which is what Lambda
+  Function URLs require for routing. Deploy:
+
+    aws cloudformation deploy \
+      --template-file infra/cloudfront-app.yaml \
+      --stack-name suranku-portal-cdn \
+      --parameter-overrides CertificateArn=<acm-arn> \
+      --capabilities CAPABILITY_NAMED_IAM
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: app.suranku.com
+  OriginDomainName:
+    Type: String
+    Default: s7vango5oukqmudmzuz4wc4sly0zcuse.lambda-url.us-east-1.on.aws
+    Description: The Lambda Function URL host (no scheme, no slash).
+  CertificateArn:
+    Type: String
+    Description: ACM cert ARN for DomainName, in us-east-1.
+
+Resources:
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "Data Intelligence Portal — ${DomainName}"
+        Aliases:
+          - !Ref DomainName
+        PriceClass: PriceClass_100        # US/Canada/Europe edges (cheapest)
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        ViewerCertificate:
+          AcmCertificateArn: !Ref CertificateArn
+          SslSupportMethod: sni-only
+          MinimumProtocolVersion: TLSv1.2_2021
+        Origins:
+          - Id: lambda-function-url
+            DomainName: !Ref OriginDomainName
+            CustomOriginConfig:
+              OriginProtocolPolicy: https-only
+              OriginSSLProtocols: [TLSv1.2]
+              HTTPSPort: 443
+        DefaultCacheBehavior:
+          TargetOriginId: lambda-function-url
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE]
+          CachedMethods: [GET, HEAD]
+          # Managed CachingDisabled — the app is dynamic (API + per-session data).
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          # Managed AllViewerExceptHostHeader — forward everything to the origin
+          # EXCEPT Host, so Lambda sees its own Function-URL host (required for routing).
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+
+Outputs:
+  DistributionDomainName:
+    Description: Point the app CNAME at this (DNS only / grey cloud).
+    Value: !GetAtt Distribution.DomainName
+  DistributionId:
+    Value: !Ref Distribution
