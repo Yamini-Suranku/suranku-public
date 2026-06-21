@@ -32,30 +32,20 @@
         </div>
         <p>Suranku Public starts with the Data Intelligence Portal. More public tools can be added here while Labs remains available for backend-backed applications.</p>
       </div>
-      <div class="grid">
-        <article class="card app-card">
-          <p class="eyebrow">Data intelligence</p>
-          <h3>Data Intelligence Portal</h3>
-          <p>Cloneable portal template for source contracts, marker-driven ingestion, historical catalog layers, data lineage, process lineage, repo scanning (SQL + Tableau + PowerBI), and AI-assisted answers.</p>
-          <div class="meta">This site is a static demo. Run the full app (Docker) to scan your own repos, persist data, and get AI answers.</div>
-          <div class="card-actions">
-            <a class="button-link primary" href="/data-intelligence-portal/#build">Launch demo</a>
-            <a class="button-link" href="https://github.com/Yamini-Suranku/suranku-public#run-the-full-app-docker--recommended">Run the full app</a>
-            <a class="button-link" href="https://github.com/Yamini-Suranku/suranku-public">View source</a>
-          </div>
-        </article>
-        <article class="card app-card">
-          <p class="eyebrow">Coming later</p>
-          <h3>AI Readiness Tools</h3>
-          <p>Public readiness utilities and governance references for teams exploring responsible AI adoption.</p>
-          <div class="meta">Planned Suranku Public app</div>
-        </article>
-        <article class="card app-card">
-          <p class="eyebrow">Coming later</p>
-          <h3>MCP & RAG Demos</h3>
-          <p>Reference apps for governed retrieval, tool use, MCP integrations, and enterprise knowledge workflows.</p>
-          <div class="meta">Planned Suranku Public app</div>
-        </article>
+      <!-- Cards are rendered from /apps.json (the app registry) by the script below.
+           To add an app: add an entry to apps.json (see CONVENTIONS.md). -->
+      <div class="grid" id="apps-grid">
+        <noscript>
+          <article class="card app-card">
+            <p class="eyebrow">Data intelligence</p>
+            <h3>Data Intelligence Portal</h3>
+            <p>Cloneable portal for source contracts, marker-driven ingestion, catalog layers, data &amp; process lineage, repo scanning, and AI-assisted answers.</p>
+            <div class="card-actions">
+              <a class="button-link primary" href="/data-intelligence-portal/">Open demo</a>
+              <a class="button-link" href="https://github.com/Yamini-Suranku/suranku-public/tree/main/apps/data-intelligence-portal">Get the code</a>
+            </div>
+          </article>
+        </noscript>
       </div>
     </section>
 
@@ -116,5 +106,50 @@
     <span>Suranku Public | Free public apps and templates.</span>
     <a href="https://github.com/Yamini-Suranku/suranku-public">GitHub</a>
   </footer>
+
+  <script>
+    // Registry-driven app hub. Cards come from /apps.json so adding an app is a
+    // data change, not HTML. The live host (app.suranku.com) and the static host
+    // (public.suranku.com) render the same cards; "Open demo" is a relative link
+    // so each host opens its own version of the page.
+    (function () {
+      var LIVE_HOST = "https://app.suranku.com";
+      var grid = document.getElementById("apps-grid");
+      function esc(v) {
+        return String(v == null ? "" : v)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+      function badge(status) {
+        if (status === "live") return ' <span class="badge">Live</span>';
+        if (status === "static-only") return ' <span class="badge">Static demo</span>';
+        if (status === "soon") return ' <span class="badge">Coming soon</span>';
+        return "";
+      }
+      function card(app) {
+        var soon = app.status === "soon";
+        var actions;
+        if (soon) {
+          actions = '<div class="meta">Planned Suranku Public app</div>';
+        } else {
+          var live = app.api
+            ? '<a class="button-link" href="' + LIVE_HOST + esc(app.page) + '">Live app ↗</a>' : "";
+          var code = app.repo
+            ? '<a class="button-link" href="' + esc(app.repo) + '">Get the code</a>' : "";
+          actions =
+            '<div class="card-actions">' +
+            '<a class="button-link primary" href="' + esc(app.page) + '">Open demo</a>' +
+            live + code + "</div>";
+        }
+        return '<article class="card app-card' + (soon ? " is-soon" : "") + '">' +
+          '<p class="eyebrow">' + esc(app.category || "Public app") + "</p>" +
+          "<h3>" + esc(app.name) + badge(app.status) + "</h3>" +
+          "<p>" + esc(app.blurb) + "</p>" + actions + "</article>";
+      }
+      fetch("/apps.json", { cache: "no-cache" })
+        .then(function (r) { if (!r.ok) throw new Error("apps.json"); return r.json(); })
+        .then(function (apps) { grid.innerHTML = apps.map(card).join(""); })
+        .catch(function () { /* keep the <noscript> fallback already in the grid */ });
+    })();
+  </script>
 </body>
 </html>

@@ -8,3 +8,6 @@ __pycache__/
 **/data/*.db
 **/data/object-store/*
 !**/data/object-store/.gitkeep
+
+# AWS SAM local build output
+.aws-sam/

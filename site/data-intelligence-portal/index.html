@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- API base: empty = backend at origin root (current single-app deploy). For multi-app
+       hosting where the backend is mounted under /data-intelligence-portal/api, set
+       content="/data-intelligence-portal". See CONVENTIONS.md. -->
+  <meta name="app-api-base" content="">
   <title>Data Intelligence Portal | Suranku Public</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -292,6 +296,6 @@
     <a href="https://github.com/Yamini-Suranku/data-intelligence-portal">GitHub</a>
   </footer>
 
-  <script src="/assets/app.js?v=7"></script>
+  <script src="/assets/app.js?v=8"></script>
 </body>
 </html>

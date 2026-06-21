@@ -13,6 +13,14 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 
+// API base. Empty (root) today, so /api/* hits the backend at the origin root.
+// When the backend is mounted under an app prefix for multi-app hosting on
+// app.suranku.com, set <meta name="app-api-base" content="/<app-id>"> in the page
+// head and the same code calls /<app-id>/api/* (see CONVENTIONS.md). staticApi still
+// receives the logical /api/* path, so static-demo mode is unaffected.
+const API_BASE = (document.querySelector('meta[name="app-api-base"]')?.content || "").replace(/\/+$/, "");
+const apiUrl = (path) => API_BASE + path;
+
 // Escape untrusted values before injecting into innerHTML.
 function esc(value) {
   return String(value === undefined || value === null ? "" : value)
@@ -125,7 +133,7 @@ function slug(text) { return String(text || "").toLowerCase().replace(/[^a-z0-9]
 
 async function api(path, options = {}) {
   if (state.staticMode) return staticApi(path, options);
-  const response = await fetch(path, { headers: { "Content-Type": "application/json" }, ...options });
+  const response = await fetch(apiUrl(path), { headers: { "Content-Type": "application/json" }, ...options });
   if (!response.ok) throw new Error((await response.text()) || `Request failed: ${path}`);
   return response.json();
 }
@@ -597,8 +605,8 @@ async function renderMonitoring() {
   const overall = $("#monitor-overall");
   try {
     const started = performance.now();
-    const health = await fetch("/api/health").then((r) => { if (!r.ok) throw new Error("health"); return r.json(); });
-    const readiness = await fetch("/api/readiness").then((r) => { if (!r.ok) throw new Error("readiness"); return r.json(); });
+    const health = await fetch(apiUrl("/api/health")).then((r) => { if (!r.ok) throw new Error("health"); return r.json(); });
+    const readiness = await fetch(apiUrl("/api/readiness")).then((r) => { if (!r.ok) throw new Error("readiness"); return r.json(); });
     const latency = Math.round(performance.now() - started);
     overall.className = `monitor-overall ${readiness.status === "ready" ? "is-ready" : "is-degraded"}`;
     overall.innerHTML = `<span class="status-dot"></span> Backend ${esc(readiness.status)} · liveness ${esc(health.status)} · ${latency}ms`;

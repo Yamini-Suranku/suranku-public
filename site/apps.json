@@ -1,0 +1,32 @@
+[
+  {
+    "id": "data-intelligence-portal",
+    "name": "Data Intelligence Portal",
+    "category": "Data intelligence",
+    "blurb": "Cloneable portal for source contracts, marker-driven ingestion, catalog layers, data & process lineage, repo scanning (SQL + Tableau + PowerBI), and AI-assisted answers.",
+    "status": "live",
+    "page": "/data-intelligence-portal/",
+    "api": "/data-intelligence-portal/api",
+    "repo": "https://github.com/Yamini-Suranku/suranku-public/tree/main/apps/data-intelligence-portal"
+  },
+  {
+    "id": "ai-readiness-tools",
+    "name": "AI Readiness Tools",
+    "category": "Responsible AI",
+    "blurb": "Public readiness utilities and governance references for teams exploring responsible AI adoption.",
+    "status": "soon",
+    "page": "/ai-readiness-tools/",
+    "api": null,
+    "repo": null
+  },
+  {
+    "id": "mcp-rag-demos",
+    "name": "MCP & RAG Demos",
+    "category": "Retrieval & tools",
+    "blurb": "Reference apps for governed retrieval, tool use, MCP integrations, and enterprise knowledge workflows.",
+    "status": "soon",
+    "page": "/mcp-rag-demos/",
+    "api": null,
+    "repo": null
+  }
+]
