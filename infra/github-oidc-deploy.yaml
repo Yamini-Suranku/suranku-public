@@ -78,12 +78,25 @@ Resources:
               StringLike:
                 aws:sourceArn: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppStackName}-*"
       LifecyclePolicy:
-        # Keep storage to a few cents/month: retain only the last 3 images.
+        # Keep storage to a few cents/month. Rule 1 clears orphan untagged layers
+        # fast; rule 2 keeps the current image + 2 rollback targets. (An ECR rule
+        # with tagStatus "any" must have the highest rulePriority, so it stays last.)
         LifecyclePolicyText: |
           {
             "rules": [
               {
                 "rulePriority": 1,
+                "description": "Expire untagged images after 1 day",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 1
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 2,
                 "description": "Keep last 3 images",
                 "selection": {
                   "tagStatus": "any",
