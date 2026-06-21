@@ -52,6 +52,33 @@ fly deploy
 Then point the Pages hub at it (e.g. a `app.suranku.com` CNAME + a "Launch the full app →"
 link, already on the hub).
 
+### AWS Lambda (serverless, scale-to-zero — best for low/sporadic traffic)
+
+Pay-per-request with no idle cost. One container image serves the site **and** `/api` behind a
+**Lambda Function URL** (no API Gateway, no CORS). Uses [`template.yaml`](template.yaml),
+[`apps/data-intelligence-portal/Dockerfile.lambda`](apps/data-intelligence-portal/Dockerfile.lambda),
+and `lambda_handler.py` (Mangum wraps the FastAPI app).
+
+```bash
+# prerequisites: AWS SAM CLI + Docker + an ECR repo (sam creates one with --guided)
+sam build
+sam deploy --guided --parameter-overrides AnthropicApiKey=YOUR_KEY   # key optional
+# -> Outputs.PortalUrl is your app; link the Pages hub "Run the full app" at it.
+```
+
+Lambda specifics (already wired in the image):
+- **Read-only filesystem** except `/tmp` — the image sets `PORTAL_DATA_DIR`, `PORTAL_DB`,
+  `PORTAL_OBJECT_STORE`, and `PORTAL_SCAN_ROOT` under `/tmp`. So **data is ephemeral**
+  (per warm container; gone on cold start). Perfect for a demo; for durable metadata use
+  **EFS** mounted at `/tmp/data`, or move to **DynamoDB/RDS**.
+- **Cold starts**: a container-image FastAPI cold start is ~1–3s; fine for low traffic.
+  `EphemeralStorage` is 2 GB (for extracted repo archives) and timeout 120s (for scans) —
+  tune in `template.yaml`.
+- **Auth**: `FunctionUrlConfig.AuthType: NONE` makes it a public demo. For a private instance
+  use `AWS_IAM`. Keep the shared-instance security rules below (public-URL/zip scanning only).
+- Static-through-Lambda means each same-origin asset is an invocation — negligible at low
+  traffic. If it grows, put `site/` on **S3 + CloudFront** and keep Lambda for `/api`.
+
 ### Persistence
 Metadata is **SQLite at `/app/data`** — ephemeral by default on a PaaS (resets on redeploy).
 For durable data, attach a 1 GB volume at `/app/data` (commented blocks in `render.yaml` /

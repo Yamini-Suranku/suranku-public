@@ -57,10 +57,14 @@ keeps your token on your machine.
 
 ### Host it (Render / Fly.io)
 
-To stand up a live full instance (e.g. `app.suranku.com`) link to from the Pages hub, use the
-included **[`render.yaml`](render.yaml)** or **[`fly.toml`](fly.toml)** — both deploy the same
-Dockerfile. See **[`DEPLOY.md`](DEPLOY.md)** for env, persistence, and the security guidance
-(don't accept private tokens on a shared instance).
+To stand up a live full instance (e.g. `app.suranku.com`) link to from the Pages hub:
+
+- **AWS Lambda** (serverless, scale-to-zero — best for low/sporadic traffic): `sam deploy`
+  with [`template.yaml`](template.yaml) → a Function URL serving site + API.
+- **Render / Fly.io** (always-on container): [`render.yaml`](render.yaml) / [`fly.toml`](fly.toml).
+
+All deploy the same app. See **[`DEPLOY.md`](DEPLOY.md)** for steps, env, persistence, and the
+security guidance (don't accept private tokens on a shared instance).
 
 ## Add a new public app
 
