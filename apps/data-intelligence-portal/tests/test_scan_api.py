@@ -47,6 +47,23 @@ def test_scan_local_path_produces_table_and_column_lineage(tmp_path, monkeypatch
     assets = client.get("/api/scan/assets").json()
     assert any(a["asset_type"] == "sql" and a["name"] == "customer_spend" for a in assets)
 
+    # the table is reported as drillable (has column lineage) for graph ring highlighting
+    assert "analytics.customer_spend" in client.get("/api/lineage/column-tables").json()
+
+
+def test_scan_emits_process_lineage_steps(tmp_path, monkeypatch):
+    # A repo scan should populate process lineage too (not just ingestion), so the
+    # Process Lineage graph reflects fetched → parsed → tables → column lineage.
+    monkeypatch.setattr(main, "SCAN_ROOT", tmp_path)
+    _fixture_repo(tmp_path)
+    src = client.post("/api/scan/sources", json={"name": "analytics2", "path": "analytics", "sql_globs": ["**/*.sql"]})
+    source_id = src.json()["id"]
+    assert client.post(f"/api/scan/sources/{source_id}/run").status_code == 200
+
+    proc = client.get("/api/lineage/process").json()
+    steps = {p["step_name"] for p in proc if p["marker_id"] == "scan · analytics2"}
+    assert {"repo_fetched", "files_parsed", "tables_extracted", "column_lineage_built"} <= steps
+
 
 def test_scan_demo_seeds_bundled_sample_when_scan_root_empty(tmp_path, monkeypatch):
     # Simulate Lambda: SCAN_ROOT is an empty dir (not ROOT/repos), so /api/scan/demo

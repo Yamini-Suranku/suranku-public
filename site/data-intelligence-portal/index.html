@@ -243,7 +243,7 @@
         <div class="graph-wrap"><svg id="data-graph" class="graph"></svg>
           <p id="data-graph-empty" class="graph-empty">No data lineage yet — run ingestion, add an edge, or scan a repo.</p>
         </div>
-        <p class="hint">Click a table or report node to drill into its column-level lineage.</p>
+        <p class="hint">Nodes with a <strong>dashed ring</strong> are derived tables/reports — click one to drill into its column-level lineage. Greyed nodes are raw sources (no incoming column lineage).</p>
         <div id="column-lineage" class="column-lineage" hidden></div>
       </div>
       <div class="graph-block">
@@ -296,6 +296,6 @@
     <a href="https://github.com/Yamini-Suranku/data-intelligence-portal">GitHub</a>
   </footer>
 
-  <script src="/assets/app.js?v=8"></script>
+  <script src="/assets/app.js?v=9"></script>
 </body>
 </html>

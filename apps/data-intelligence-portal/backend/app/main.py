@@ -630,6 +630,15 @@ def process_lineage() -> list[dict[str, Any]]:
         return rows(conn, "select * from process_lineage order by created_at")
 
 
+@app.get("/api/lineage/column-tables")
+def column_lineage_tables() -> list[str]:
+    """Distinct tables that have column-level lineage — the UI rings these nodes
+    as drillable in the data-lineage graph."""
+    ensure_demo()
+    with connect() as conn:
+        return [r["target_table"] for r in rows(conn, "select distinct target_table from column_lineage order by target_table")]
+
+
 @app.post("/api/chat")
 def chat(payload: ChatRequest) -> dict[str, Any]:
     if not payload.question.strip():
@@ -758,6 +767,8 @@ def _persist_scan(conn: sqlite3.Connection, source: dict[str, Any], result: dict
         placeholders = ",".join("?" for _ in prior_scans)
         conn.execute(f"delete from data_lineage where scan_id in ({placeholders})", prior_scans)
         conn.execute(f"delete from column_lineage where scan_id in ({placeholders})", prior_scans)
+        # process-lineage rows for this source's prior scans (scan steps), scoped by run_id
+        conn.execute(f"delete from process_lineage where run_id in ({placeholders})", prior_scans)
     conn.execute("delete from scanned_assets where source_id = ?", (source["id"],))
     scan_id = uuid.uuid4().hex
     now = utc_now()
@@ -801,6 +812,25 @@ def _persist_scan(conn: sqlite3.Connection, source: dict[str, Any], result: dict
         (summary["id"], summary["source_id"], summary["started_at"], summary["completed_at"], summary["status"],
          summary["files"], summary["tables"], summary["columns"], json.dumps(summary["warnings"])),
     )
+
+    # Emit process-lineage steps so the Process Lineage graph also reflects a repo
+    # scan (not just ingestion runs): fetched → parsed → tables → column lineage.
+    n_sql = sum(1 for a in result["assets"] if a["asset_type"] == "sql")
+    n_report = len(result["assets"]) - n_sql
+    src_label = source.get("repo_url") or source.get("path") or source["name"]
+    if source.get("subdir"):
+        src_label = f"{src_label} /{source['subdir']}"
+    scan_steps = (
+        ("repo_fetched", f"{source['kind']}: {src_label}"),
+        ("files_parsed", f"{summary['files']} file(s): {n_sql} SQL, {n_report} report(s)"),
+        ("tables_extracted", f"{summary['tables']} table(s)"),
+        ("column_lineage_built", f"{summary['columns']} column link(s)"),
+    )
+    for step_name, detail in scan_steps:
+        conn.execute(
+            "insert into process_lineage values (?, ?, ?, ?, ?, ?)",
+            (f"pl_{uuid.uuid4().hex[:12]}", f"scan · {source['name']}", scan_id, step_name, detail, utc_now()),
+        )
     return summary
 
 
