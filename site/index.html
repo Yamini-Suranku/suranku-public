@@ -17,7 +17,7 @@
       <p class="lede">A public collection of Suranku experiments, reusable templates, and working reference apps for enterprise platform architecture.</p>
     </div>
     <div class="actions">
-      <a class="button-link primary" href="/data-intelligence-portal/">Open first app</a>
+<a class="button-link" href="https://suranku.com" target="_blank" rel="noopener noreferrer">Suranku home</a>
       <a class="button-link" href="https://suranku.com/insights/index.html">Suranku Insights</a>
       <a class="button-link" href="https://github.com/Yamini-Suranku/suranku-public">GitHub</a>
     </div>
@@ -43,6 +43,7 @@
             <div class="card-actions">
               <a class="button-link primary" href="/data-intelligence-portal/">Open demo</a>
               <a class="button-link" href="https://github.com/Yamini-Suranku/suranku-public/tree/main/apps/data-intelligence-portal">Get the code</a>
+              <a class="button-link" href="https://suranku.com/solutions/data-intelligence-portal-architecture.html" target="_blank" rel="noopener noreferrer">See the design</a>
             </div>
           </article>
         </noscript>
@@ -135,10 +136,12 @@
             ? '<a class="button-link" href="' + LIVE_HOST + esc(app.page) + '">Live app ↗</a>' : "";
           var code = app.repo
             ? '<a class="button-link" href="' + esc(app.repo) + '">Get the code</a>' : "";
+          var arch = app.architecture
+            ? '<a class="button-link" href="' + esc(app.architecture) + '" target="_blank" rel="noopener noreferrer">See the design</a>' : "";
           actions =
             '<div class="card-actions">' +
             '<a class="button-link primary" href="' + esc(app.page) + '">Open demo</a>' +
-            live + code + "</div>";
+            live + code + arch + "</div>";
         }
         return '<article class="card app-card' + (soon ? " is-soon" : "") + '">' +
           '<p class="eyebrow">' + esc(app.category || "Public app") + "</p>" +

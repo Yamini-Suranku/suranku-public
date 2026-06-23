@@ -7,7 +7,8 @@
     "status": "live",
     "page": "/data-intelligence-portal/",
     "api": "/data-intelligence-portal/api",
-    "repo": "https://github.com/Yamini-Suranku/suranku-public/tree/main/apps/data-intelligence-portal"
+    "repo": "https://github.com/Yamini-Suranku/suranku-public/tree/main/apps/data-intelligence-portal",
+    "architecture": "https://suranku.com/solutions/data-intelligence-portal-architecture.html"
   },
   {
     "id": "ai-readiness-tools",

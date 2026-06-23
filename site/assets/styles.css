@@ -46,9 +46,9 @@ h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-family: var(--display); letter-spacing: -0.01em; }
 
 h1 {
-  font-size: clamp(2rem, 5vw, 4rem);
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
   font-weight: 700;
-  line-height: 1.04;
+  line-height: 1.1;
   margin-top: 0.5rem;
 }
 
@@ -150,11 +150,9 @@ button.primary {
 }
 
 .public-hero .actions {
-  align-items: stretch;
+  align-items: center;
   align-self: center;
-  flex: 0 0 auto;
-  flex-direction: column;
-  min-width: 12rem;
+  flex-wrap: wrap;
 }
 
 main {
@@ -390,8 +388,7 @@ footer a {
   }
 
   .public-hero .actions {
-    align-self: stretch;
-    min-width: 0;
+    align-self: flex-start;
   }
 }
 
